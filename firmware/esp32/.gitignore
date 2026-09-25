@@ -1,0 +1,12 @@
+.pio/
+.venv/
+dist/
+__pycache__/
+*.pyc
+.env
+.env.*
+!.env.example
+ogpass_config.h
+*.sqlite3
+staticfiles/
+secrets/

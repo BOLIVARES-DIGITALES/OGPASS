@@ -1,0 +1,12 @@
+Operations to perform:
+  Apply all migrations: admin, auth, contenttypes, core, sessions
+Running migrations:
+  Applying core.0005_tag_card_number_cardscan... OK
+  Applying core.0006_preload_walletevent... OK
+{
+  "source": "isolated_test_database",
+  "runtime_payment_posted": true,
+  "no_truncate": true,
+  "no_drop": true,
+  "no_seal_tampering": true
+}

@@ -1,0 +1,18 @@
+{$DOMAIN} {
+    encode zstd gzip
+    header {
+        X-Content-Type-Options nosniff
+        Referrer-Policy same-origin
+        Permissions-Policy "camera=(), microphone=(), geolocation=()"
+        Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self' https://www.mercadopago.cl https://www.mercadopago.com https://www.mercadopago.com.ar"
+    }
+    request_body {
+        max_size 32KB
+    }
+    reverse_proxy backend:8000 {
+        flush_interval -1
+    }
+    log {
+        output stdout
+    }
+}

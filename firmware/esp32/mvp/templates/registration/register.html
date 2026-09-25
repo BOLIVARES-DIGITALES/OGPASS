@@ -1,0 +1,1 @@
+{% extends 'base.html' %}{% block content %}<section class="auth"><p class="eyebrow">EMPIEZA AQUÍ</p><h1>Una cuenta.<br>Tu propio tag.</h1><form method="post">{% csrf_token %}{{ form.as_p }}<button>Crear cuenta</button></form><a href="/login/">Ya tengo cuenta</a></section>{% endblock %}

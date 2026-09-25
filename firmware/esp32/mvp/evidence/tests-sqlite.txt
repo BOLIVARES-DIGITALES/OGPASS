@@ -1,0 +1,92 @@
+Creating test database for alias 'default' ('file:memorydb_default?mode=memory&cache=shared')...
+Found 45 test(s).
+Operations to perform:
+  Synchronize unmigrated apps: messages, staticfiles
+  Apply all migrations: admin, auth, contenttypes, core, sessions
+Synchronizing apps without migrations:
+  Creating tables...
+    Running deferred SQL...
+Running migrations:
+  Applying contenttypes.0001_initial... OK
+  Applying auth.0001_initial... OK
+  Applying admin.0001_initial... OK
+  Applying admin.0002_logentry_remove_auto_add... OK
+  Applying admin.0003_logentry_add_action_flag_choices... OK
+  Applying contenttypes.0002_remove_content_type_name... OK
+  Applying auth.0002_alter_permission_name_max_length... OK
+  Applying auth.0003_alter_user_email_max_length... OK
+  Applying auth.0004_alter_user_username_opts... OK
+  Applying auth.0005_alter_user_last_login_null... OK
+  Applying auth.0006_require_contenttypes_0002... OK
+  Applying auth.0007_alter_validators_add_error_messages... OK
+  Applying auth.0008_alter_user_username_max_length... OK
+  Applying auth.0009_alter_user_last_name_max_length... OK
+  Applying auth.0010_alter_group_name_max_length... OK
+  Applying auth.0011_update_proxy_permissions... OK
+  Applying auth.0012_alter_user_first_name_max_length... OK
+  Applying core.0001_initial... OK
+  Applying core.0002_ledger_guards... OK
+  Applying core.0003_ratebucket... OK
+  Applying core.0004_seal_journals... OK
+  Applying core.0005_tag_card_number_cardscan... OK
+  Applying core.0006_preload_walletevent... OK
+  Applying sessions.0001_initial...test_balance_hidden_for_disabled_card_and_zero_available_if_frozen (core.tests.CardsAndPreloadsTests.test_balance_hidden_for_disabled_card_and_zero_available_if_frozen) ... ok
+test_cannot_replace_another_users_card (core.tests.CardsAndPreloadsTests.test_cannot_replace_another_users_card) ... ok
+test_number_is_not_uid_and_does_not_associate_without_scan (core.tests.CardsAndPreloadsTests.test_number_is_not_uid_and_does_not_associate_without_scan) ... ok
+test_ops_stream_and_balances_require_staff (core.tests.CardsAndPreloadsTests.test_ops_stream_and_balances_require_staff) ... ok
+test_other_user_cannot_activate_and_cancel_after_activation_fails (core.tests.CardsAndPreloadsTests.test_other_user_cannot_activate_and_cancel_after_activation_fails) ... Not Found: /api/preloads/6a4c4f4e-1d34-4427-a6cc-8cbed1f11df1/activate/
+ok
+test_pairing_and_balance_query_never_debit (core.tests.CardsAndPreloadsTests.test_pairing_and_balance_query_never_debit) ... ok
+test_pairing_expires_and_is_not_reusable_by_other_user (core.tests.CardsAndPreloadsTests.test_pairing_expires_and_is_not_reusable_by_other_user) ... ok
+test_preload_cancel_refunds_once_and_cannot_activate (core.tests.CardsAndPreloadsTests.test_preload_cancel_refunds_once_and_cannot_activate) ... ok
+test_preload_cannot_activate_when_funding_account_is_frozen (core.tests.CardsAndPreloadsTests.test_preload_cannot_activate_when_funding_account_is_frozen) ... ok
+test_preload_requires_backing_and_staff (core.tests.CardsAndPreloadsTests.test_preload_requires_backing_and_staff) ... ok
+test_preload_reserves_then_activates_once_without_expiry (core.tests.CardsAndPreloadsTests.test_preload_reserves_then_activates_once_without_expiry) ... ok
+test_reader_auth_and_wallet_isolation (core.tests.CardsAndPreloadsTests.test_reader_auth_and_wallet_isolation) ... Unauthorized: /api/reader/scans/
+ok
+test_replace_keeps_wallet_and_preloads_and_disables_old_tag (core.tests.CardsAndPreloadsTests.test_replace_keeps_wallet_and_preloads_and_disables_old_tag) ... ok
+test_scan_retry_returns_current_balance (core.tests.CardsAndPreloadsTests.test_scan_retry_returns_current_balance) ... ok
+test_sse_auth_and_initial_private_refresh (core.tests.CardsAndPreloadsTests.test_sse_auth_and_initial_private_refresh) ... ok
+test_wallet_events_rollback_with_financial_changes (core.tests.CardsAndPreloadsTests.test_wallet_events_rollback_with_financial_changes) ... ok
+test_csrf_required (core.tests.FlowTests.test_csrf_required) ... Forbidden (CSRF cookie not set.): /api/operations/2b685048-9a95-49d9-b7b8-6dd5f20db61a/confirm/
+ok
+test_disabled_tag (core.tests.FlowTests.test_disabled_tag) ... ok
+test_dispute_freezes_and_alerts (core.tests.FlowTests.test_dispute_freezes_and_alerts) ... ok
+test_expiration (core.tests.FlowTests.test_expiration) ... ok
+test_frozen_wallet (core.tests.FlowTests.test_frozen_wallet) ... ok
+test_full_flow_and_reversal (core.tests.FlowTests.test_full_flow_and_reversal) ... ok
+test_html_views (core.tests.FlowTests.test_html_views) ... ok
+test_insufficient_is_recorded (core.tests.FlowTests.test_insufficient_is_recorded) ... ok
+test_invalid_uid (core.tests.FlowTests.test_invalid_uid) ... ok
+test_other_wallet_cannot_confirm_or_reassign (core.tests.FlowTests.test_other_wallet_cannot_confirm_or_reassign) ... Not Found: /api/operations/c05cd014-2997-41f3-96b8-9196b605e9c1/confirm/
+ok
+test_payment_idempotent (core.tests.FlowTests.test_payment_idempotent) ... ok
+test_payment_rejects_wrong_source (core.tests.FlowTests.test_payment_rejects_wrong_source) ... ok
+test_pending_payment_not_credited (core.tests.FlowTests.test_pending_payment_not_credited) ... ok
+test_reader_api (core.tests.FlowTests.test_reader_api) ... Unauthorized: /api/reader/touch/
+ok
+test_registration_rate_limited (core.tests.FlowTests.test_registration_rate_limited) ... Too Many Requests: /register/
+ok
+test_session_required (core.tests.FlowTests.test_session_required) ... ok
+test_signed_webhook_credits_only_canonical_payment (core.tests.FlowTests.test_signed_webhook_credits_only_canonical_payment) ... Unauthorized: /api/payments/webhook/
+ok
+test_touch_idempotent (core.tests.FlowTests.test_touch_idempotent) ... ok
+test_unconnected_payments_disabled (core.tests.FlowTests.test_unconnected_payments_disabled) ... ok
+test_unique_provider_payment (core.tests.FlowTests.test_unique_provider_payment) ... ok
+test_unknown_fee_not_assumed_free (core.tests.FlowTests.test_unknown_fee_not_assumed_free) ... ok
+test_unknown_tag (core.tests.FlowTests.test_unknown_tag) ... ok
+test_user_declines (core.tests.FlowTests.test_user_declines) ... ok
+test_zero_fee_payment (core.tests.FlowTests.test_zero_fee_payment) ... ok
+test_committed_journal_cannot_receive_new_entries (core.tests.PostgresConcurrencyTests.test_committed_journal_cannot_receive_new_entries) ... skipped 'Requires PostgreSQL; SQLite does not implement row locks'
+test_database_rejects_unbalanced_and_mutation (core.tests.PostgresConcurrencyTests.test_database_rejects_unbalanced_and_mutation) ... skipped 'Requires PostgreSQL; SQLite does not implement row locks'
+test_parallel_preload_activation_is_single_credit (core.tests.PostgresConcurrencyTests.test_parallel_preload_activation_is_single_credit) ... skipped 'Requires PostgreSQL; SQLite does not implement row locks'
+test_parallel_preload_reservations_cannot_overdraw (core.tests.PostgresConcurrencyTests.test_parallel_preload_reservations_cannot_overdraw) ... skipped 'Requires PostgreSQL; SQLite does not implement row locks'
+test_two_parallel_debits_never_overdraw (core.tests.PostgresConcurrencyTests.test_two_parallel_debits_never_overdraw) ... skipped 'Requires PostgreSQL; SQLite does not implement row locks'
+
+----------------------------------------------------------------------
+Ran 45 tests in 23.969s
+
+OK (skipped=5)
+Destroying test database for alias 'default' ('file:memorydb_default?mode=memory&cache=shared')...
+ OK
+System check identified no issues (0 silenced).

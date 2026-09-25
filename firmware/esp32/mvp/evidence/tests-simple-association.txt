@@ -1,0 +1,16 @@
+Creating test database for alias 'default'...
+....Not Found: /api/preloads/fb0eee9c-325d-4016-bb2b-e73292c8a1fc/activate/
+.......Unauthorized: /api/reader/scans/
+.....Forbidden (CSRF cookie not set.): /api/operations/d9228f03-33d5-4d4c-8b8d-3e24796e0085/confirm/
+.........Not Found: /api/operations/d49f0148-f284-4660-8db7-8fb11303c836/confirm/
+....Unauthorized: /api/reader/touch/
+.Too Many Requests: /register/
+..Unauthorized: /api/payments/webhook/
+............sssss
+----------------------------------------------------------------------
+Ran 49 tests in 24.846s
+
+OK (skipped=5)
+Destroying test database for alias 'default'...
+Found 49 test(s).
+System check identified no issues (0 silenced).

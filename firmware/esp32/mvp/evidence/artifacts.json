@@ -1,0 +1,14 @@
+{
+  ".pio/build/esp32dev/firmware.bin": {
+    "bytes": 800384,
+    "sha256": "da137335bce0112097ec9694d2e5559be4ffc5b47a6aa8972b8e4eca3460b888"
+  },
+  "src/main.cpp": {
+    "bytes": 7564,
+    "sha256": "5b367a7357f105eedba4943ec7c1aa862aabcb49eda84dba69894c2963219adc"
+  },
+  "platformio.ini": {
+    "bytes": 243,
+    "sha256": "e1f96ab33acc1373e06f08ca45d50afd6e1ea2dd6726fe85125502d79e0d16eb"
+  }
+}

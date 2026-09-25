@@ -1,0 +1,96 @@
+{% extends 'base.html' %}
+{% block content %}
+<div id="wallet-page">
+  <div class="heading">
+    <div><p class="eyebrow">TU CUENTA / {{ user.username }}</p><h1>Tu cuenta, a mano.</h1></div>
+    <span class="pill">● OGPASS CLP</span>
+  </div>
+  <section id="pending" aria-live="polite"></section>
+
+  <div class="wallet-panels">
+    <section class="balance" aria-labelledby="funds-title">
+      <p class="eyebrow">01 / TU SALDO</p>
+      <h2 id="funds-title">Fondos</h2>
+      <p>Fondos OGPASS</p>
+      <div class="money" id="balance">${{ balance }}</div>
+      <p>CLP · Disponible para operaciones OGPASS</p>
+      <small id="updated">Consultando ledger…</small>
+      <p id="connection" role="status"></p>
+      <p id="frozen" class="notice" {% if not wallet.frozen %}hidden{% endif %}>Cuenta en revisión. Operaciones suspendidas.</p>
+      <a class="button light" href="#recargar">＋ Recargar</a>
+      <a class="card-link" href="#my-card">{% if tags %}Ver mi tarjeta{% else %}Asociar mi tarjeta{% endif %}</a>
+      <div id="scan-status" class="scan-status" role="status">Escanea tu tarjeta asociada para consultar tus fondos OGPASS.</div>
+    </section>
+
+    <section class="card" aria-labelledby="movements-title">
+      <p class="eyebrow">02 / TU ACTIVIDAD</p>
+      <h2 id="movements-title">Movimientos</h2>
+      <p class="muted">Tus operaciones y recargas recientes.</p><small id="live-status" role="status">Conectando actualizaciones en vivo…</small>
+      <div id="movements" aria-live="polite"><p>Aún no hay movimientos.</p></div>
+    </section>
+
+    <section class="card" id="recargar" aria-labelledby="topups-title">
+      <p class="eyebrow">03 / AGREGA SALDO</p>
+      <h2 id="topups-title">Recargas</h2>
+      <div class="preloads-section">
+        <h3>Prerecargas por activar</h3>
+        <p class="muted">Fondos OGPASS reservados para ti. Sin vencimiento configurado; se acreditan una sola vez al activarlos.</p>
+        <div id="preloads" aria-live="polite"><p class="muted">Consultando prerecargas…</p></div>
+        <p id="preload-message" role="status"></p>
+      </div>
+      <hr><h3>Agregar nuevos fondos</h3>
+      <p>La acreditación aparece cuando el proveedor confirma el pago.</p>
+      <form action="/topups/" method="post">
+        {% csrf_token %}
+        <input type="hidden" name="key" value="{{ topup_key }}">
+        <label for="amount">Importe en CLP</label>
+        <input id="amount" type="number" name="amount" min="500" max="200000" step="1" value="5000" required>
+        <button {% if not payments_enabled %}disabled{% endif %}>Pagar con Mercado Pago ↗</button>
+      </form>
+      {% if not payments_enabled %}<p class="muted">Medio de pago pendiente de conexión. No se acreditan recargas simuladas.</p>{% endif %}
+    </section>
+  </div>
+
+  <div class="grid wallet-extras">
+    <details class="card card-pairing" id="my-card" {% if not tags or card_number or association_request %}open{% endif %}>
+      <summary>Mi tarjeta</summary>
+      <h2>Tu tarjeta bip!</h2>
+      <p>Guarda su número de nueve dígitos para acceder a la consulta oficial de saldo. No necesitas el lector para consultar el portal bip!.</p>
+      <div id="linked-cards" aria-live="polite">{% for tag in tags %}<div class="linked-card"><strong>Tarjeta {{ tag.card_number }}</strong><p>{% if tag.active %}Asociada{% else %}Desactivada{% endif %}</p></div>{% endfor %}</div>
+      <form action="/tags/" method="post" id="pairing-form">
+        {% csrf_token %}
+        <label for="card-number">ID de la tarjeta</label>
+        <input name="card_number" id="card-number" inputmode="numeric" autocomplete="off" placeholder="Ej. 114309782" value="{{ card_number }}" minlength="9" maxlength="9" pattern="[0-9]{9}" required aria-describedby="card-help">
+        <small id="card-help">Nueve dígitos impresos en tu tarjeta.</small>
+        <button>Guardar tarjeta y consultar</button>
+      </form>
+      <section class="transport-balance" aria-labelledby="transport-title">
+        <h3 id="transport-title">Saldo bip! · Transporte</h3>
+        <div id="transport-result" aria-live="polite"><p>Comprobando la consulta oficial…</p></div>
+        <p class="muted">Saldo informado por el operador, separado de tus fondos OGPASS. La fecha de consulta no garantiza que incluya tus últimos viajes.</p>
+      </section>
+      <details><summary>Usar esta tarjeta con el lector OGPASS</summary>
+      <p id="association-status" role="status">{% if association_request %}Tarjeta {{ association_request.card_number }} · Vinculación al lector OGPASS pendiente.{% endif %}</p>
+      <p id="reader-status" class="muted" role="status">Comprobando conexión del lector…</p>
+      <small>La vinculación NFC permite consultar fondos OGPASS en nuestro lector. Requiere una lectura física verificada.</small></details>
+    </details>
+    <details class="card">
+      <summary>Stellar</summary>
+      <p class="eyebrow">OTRAS FUENTES / SIN CONVERSIÓN A CLP</p>
+      <h2>Activos verificables.</h2>
+      <div id="stellar">Consultando Stellar…</div>
+
+    </details>
+  </div>
+</div>
+<dialog id="nfc-monitor" class="nfc-monitor" aria-labelledby="nfc-title" aria-describedby="nfc-description">
+  <div class="heading"><div><p class="eyebrow">LECTOR NFC / OGPASS</p><h2 id="nfc-title">Tarjeta de repuesto</h2></div><button type="button" id="nfc-close" class="secondary" aria-label="Cerrar monitor NFC">Cerrar</button></div>
+  <p id="nfc-source"></p>
+  <p id="nfc-description">Consulta el lector y explora cómo sería preparar un llavero de repuesto.</p>
+  <p class="notice">Escritura real no disponible. El lector actual obtiene el UID; no extrae ni copia el contenido completo, los metadatos o el saldo bip!.</p>
+  <p id="nfc-live" role="status">Comprobando lector…</p>
+  <div class="terminal" aria-label="Monitor del lector"><div class="terminal-bar"><span>● ● ●</span> OGPASS · estado real</div><div id="nfc-log" role="log" aria-live="polite" aria-relevant="additions text"></div></div>
+  <div class="nfc-actions"><button type="button" disabled>Escribir en llavero · No disponible</button><button type="button" id="nfc-demo-start" class="secondary">Ver demostración de copia</button></div>
+  <section id="nfc-demo" hidden aria-labelledby="nfc-demo-title"><h3 id="nfc-demo-title">DEMOSTRACIÓN · Sin conexión de escritura</h3><p>Datos de ejemplo. No se leerá ni modificará ninguna tarjeta.</p><ol class="nfc-steps"><li id="nfc-step-1">1. Leer referencia de ejemplo</li><li id="nfc-step-2">2. Presentar llavero de ejemplo</li><li id="nfc-step-3">3. Simular escritura y comparación</li></ol><pre id="nfc-demo-log" role="log" aria-live="polite"></pre><p id="nfc-demo-result" role="status"></p></section>
+</dialog>
+{% endblock %}

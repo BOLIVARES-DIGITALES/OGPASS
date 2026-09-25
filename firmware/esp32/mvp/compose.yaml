@@ -1,0 +1,67 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?required}
+      POSTGRES_USER: ogpass_owner
+      POSTGRES_PASSWORD: ${POSTGRES_ADMIN_PASSWORD:?required}
+      APP_DB_PASSWORD: ${POSTGRES_PASSWORD:?required}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./deploy/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh:ro
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
+      interval: 5s
+      timeout: 5s
+      retries: 12
+  migrate:
+    build: .
+    profiles: [tools]
+    env_file: .env
+    environment:
+      POSTGRES_USER: ogpass_owner
+      POSTGRES_PASSWORD: ${POSTGRES_ADMIN_PASSWORD:?required}
+    depends_on:
+      db:
+        condition: service_healthy
+    command: [python, manage.py, migrate, --noinput]
+  backend:
+    build: .
+    restart: unless-stopped
+    environment:
+      DEBUG: '0'
+      SECRET_KEY: ${SECRET_KEY:?required}
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS:?required}
+      PUBLIC_URL: ${PUBLIC_URL:?required}
+      POSTGRES_HOST: db
+      POSTGRES_DB: ogpass
+      POSTGRES_USER: ogpass
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?required}
+      MP_ACCESS_TOKEN: ${MP_ACCESS_TOKEN:-}
+      MP_WEBHOOK_SECRET: ${MP_WEBHOOK_SECRET:-}
+      MP_COLLECTOR_ID: ${MP_COLLECTOR_ID:-}
+    depends_on:
+      db:
+        condition: service_healthy
+    expose: ['8000']
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen(urllib.request.Request('http://127.0.0.1:8000/health/', headers={'X-Forwarded-Proto':'https'}),timeout=5)"]
+      interval: 20s
+      timeout: 6s
+      retries: 3
+  web:
+    image: caddy:2.10-alpine
+    restart: unless-stopped
+    environment:
+      DOMAIN: ${DOMAIN:?required}
+    ports: ['80:80', '443:443', '443:443/udp']
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on: [backend]
+volumes:
+  postgres_data:
+  caddy_data:
+  caddy_config:

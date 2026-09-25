@@ -1,0 +1,1 @@
+{% extends 'base.html' %}{% block content %}<section class="auth"><p class="eyebrow">BIENVENIDO A OGPASS</p><h1>Tu próximo<br>movimiento.</h1><p>Recarga tu cuenta, acerca tu tag y confirma desde tu móvil.</p><form method="post">{% csrf_token %}{{ form.as_p }}<button>Ingresar</button></form><p>¿Primera vez? <a href="/register/">Crea tu cuenta</a></p></section>{% endblock %}

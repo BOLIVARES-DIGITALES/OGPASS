@@ -1,0 +1,29 @@
+{
+  "kind": "AUTOMATED_TEST_ONLY",
+  "payment_source": "mock canonical response; no real money",
+  "reader_source": "HTTP client; no physical device",
+  "initial_balance": 0,
+  "topup": 5000,
+  "balance_after_topup": 5000,
+  "operation_amount": 1000,
+  "operation_cost": 700,
+  "operation_margin": 300,
+  "payment_fee": 100,
+  "balance_after_operation": 4000,
+  "report": {
+    "revenue": 1000,
+    "cost": 700,
+    "fees": 100,
+    "result": 200,
+    "trial_balance": 0,
+    "unbalanced_journals": [],
+    "wallet_liability": 4000,
+    "payment_receivable": 4900,
+    "provider_payable": 700,
+    "preload_liability": 0
+  },
+  "card_pairing": "nine-digit request + staff confirms explicit authenticated reader scan",
+  "balance_query_debits": 0,
+  "browser_js_errors": [],
+  "http_server_errors": []
+}

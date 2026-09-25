@@ -1,0 +1,2 @@
+/tmp/ogpass-venv/lib/python3.12/site-packages/django/core/handlers/asgi.py:336: Warning: StreamingHttpResponse must consume synchronous iterators in order to serve them asynchronously. Use an asynchronous iterator instead.
+  async for part in content:

@@ -1,0 +1,14 @@
+{
+  "checked_at": "2026-09-25T15:07:44.616924+00:00",
+  "official_link": "https://www.tarjetabip.cl/testPOCAE.php",
+  "destination": "http://pocae.tstgo.cl/PortalCAE-WAR-MODULE/",
+  "observed_http_status": 200,
+  "https_destination": "connection refused",
+  "observed_fields": [
+    "txtNumTarjeta",
+    "defaultReal"
+  ],
+  "human_verification": "realperson CAPTCHA in official form",
+  "card_number_submitted": false,
+  "balance_obtained": false
+}

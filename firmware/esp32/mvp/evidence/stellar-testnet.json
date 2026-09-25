@@ -1,0 +1,17 @@
+[
+  {
+    "status": "connected",
+    "network": "testnet",
+    "address": "GARBMIEQIXFAVCWMTP2XRFJITJSWX33AWAO3WKGGJN7FFJNLJRBQL3BF",
+    "balances": [
+      {
+        "balance": "10000.0000000",
+        "buying_liabilities": "0.0000000",
+        "selling_liabilities": "0.0000000",
+        "asset_type": "native"
+      }
+    ],
+    "updated_at": "2026-09-24T21:25:04.603820+00:00",
+    "source_url": "https://horizon-testnet.stellar.org/accounts/GARBMIEQIXFAVCWMTP2XRFJITJSWX33AWAO3WKGGJN7FFJNLJRBQL3BF"
+  }
+]

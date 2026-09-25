@@ -1,0 +1,7 @@
+{
+  "url": "http://127.0.0.1:8000/health/",
+  "status": "ok",
+  "service": "ogpass",
+  "payments_connected": false,
+  "scope": "local_only; no domain deployment"
+}

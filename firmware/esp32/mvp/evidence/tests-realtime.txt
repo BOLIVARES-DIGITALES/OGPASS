@@ -1,0 +1,27 @@
+{
+  "scope": "isolated fixtures, no real money or physical reader",
+  "server": "Uvicorn ASGI + PostgreSQL LISTEN/NOTIFY",
+  "reservation_to_browser_ms": 555,
+  "activation_to_balance_ms": 288,
+  "scan_to_browser_ms": 174,
+  "recipient_balance": 5000,
+  "issuer_balance": 5000,
+  "card_replaced_without_balance_loss": true,
+  "pending_preload_survives_replacement": true,
+  "reconnect_resync": true,
+  "admin_status_updated_live": true,
+  "balance_scans_create_operations": 0,
+  "browser_errors": [],
+  "reconciliation": {
+    "revenue": 0,
+    "cost": 0,
+    "fees": 0,
+    "result": 0,
+    "trial_balance": 0,
+    "unbalanced_journals": [],
+    "wallet_liability": 10000,
+    "payment_receivable": 10000,
+    "provider_payable": 0,
+    "preload_liability": 0
+  }
+}
