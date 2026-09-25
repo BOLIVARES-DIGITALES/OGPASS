@@ -60,6 +60,10 @@ La suite PostgreSQL incluye carreras de dos cobros y rechazo de alteraciones/des
 
 Requisitos: Linux con Docker Engine + Compose, puertos 80/443 públicos, dominio A hacia la IP del servidor (AAAA solo si IPv6 funciona), acceso SSH. Copiar esta carpeta al servidor, por ejemplo `/opt/ogpass/mvp`. No copiar `db.sqlite3`, claves Testnet de prueba ni `.env` de otra instalación.
 
+### Dominio `ogpass.xyz` en Hostinger
+
+El dominio actualmente redirige a `bolivaresdigitales.online`; no cambies sus registros DNS hasta tener lista la IP pública del servidor y acordar el cambio de tráfico. Este despliegue con Docker Compose requiere un VPS Hostinger con Docker y acceso SSH; el hosting web compartido no ejecuta esta arquitectura. Para el corte, apunta el registro A de `@` a la IPv4 del VPS, configura `www` como CNAME a `ogpass.xyz` si se desea, y elimina registros AAAA solo si el VPS no ofrece IPv6 funcional. Permite tráfico entrante TCP 80/443 y UDP 443 para Caddy. Completa el `.env` local del servidor antes de ejecutar `preflight.py`; no copies el archivo local de desarrollo con marcadores.
+
 ```bash
 cd /opt/ogpass/mvp
 cp .env.example .env
