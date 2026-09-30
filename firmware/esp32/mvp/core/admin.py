@@ -1,10 +1,10 @@
 from django.contrib import admin
-from .models import Wallet,Tag,Reader,Journal,Entry,TopUp,Operation,Audit,StellarAccount,CardScan,Preload
+from .models import Wallet,Tag,Reader,Journal,Entry,TopUp,Operation,Audit,StellarAccount,CardScan,Preload,ExternalTransitCredential,ExternalTransitBalanceSnapshot
 class ReadOnly(admin.ModelAdmin):
     def has_add_permission(self,r): return False
     def has_change_permission(self,r,obj=None): return False
     def has_delete_permission(self,r,obj=None): return False
-for model in [Journal,Entry,TopUp,Operation,Audit,StellarAccount,CardScan,Preload]: admin.site.register(model,ReadOnly)
+for model in [Journal,Entry,TopUp,Operation,Audit,StellarAccount,CardScan,Preload,ExternalTransitCredential,ExternalTransitBalanceSnapshot]: admin.site.register(model,ReadOnly)
 @admin.register(Reader)
 class ReaderAdmin(admin.ModelAdmin):
     fields = ['name','active','amount','cost','last_seen','last_uid']

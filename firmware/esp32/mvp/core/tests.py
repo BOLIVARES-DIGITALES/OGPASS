@@ -6,7 +6,7 @@ from django.test import TestCase,TransactionTestCase,override_settings
 from django.contrib.auth import get_user_model
 from django.db import connection,transaction,IntegrityError,DatabaseError,connections
 from django.utils import timezone
-from .models import Wallet,Tag,Reader,TopUp,Operation,Journal,Entry,Audit
+from .models import Wallet,Tag,Reader,TopUp,Operation,Journal,Entry,Audit,StellarAccount
 from .services import bind_tag,balance,touch,decide,apply_payment,reverse_operation,reconciliation,Conflict
 
 @override_settings(MP_COLLECTOR_ID='123')
@@ -102,6 +102,21 @@ class FlowTests(TestCase):
         self.assertEqual(self.client.get('/api/state/').json()['balance'],0)
         self.user.is_staff=True;self.user.save()
         self.assertContains(self.client.get('/ops/'),'Resultado acumulado')
+    @patch('core.views.Stellar.balance',return_value={'status':'unfunded','network':'testnet','address':'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF','balances':[]})
+    def test_client_can_link_public_stellar_account_without_secret(self,_balance):
+        from stellar_sdk import Keypair
+        self.client.force_login(self.user)
+        payload={'network':'testnet','address':Keypair.random().public_key}
+        response=self.client.post('/api/stellar/accounts/',data=json.dumps(payload),content_type='application/json')
+        self.assertEqual(response.status_code,201)
+        self.assertTrue(StellarAccount.objects.filter(wallet=self.wallet,network='testnet',address=payload['address']).exists())
+        self.assertEqual(self.client.post('/api/stellar/accounts/',data=json.dumps(payload),content_type='application/json').status_code,200)
+        response=self.client.post('/api/stellar/accounts/',data=json.dumps({'network':'testnet','address':Keypair.random().public_key}),content_type='application/json')
+        self.assertEqual(response.status_code,409)
+    def test_client_cannot_link_stellar_secret_or_bad_network(self):
+        self.client.force_login(self.user)
+        self.assertEqual(self.client.post('/api/stellar/accounts/',data=json.dumps({'network':'mainnet','address':'SAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'}),content_type='application/json').status_code,400)
+        self.assertEqual(self.client.post('/api/stellar/accounts/',data=json.dumps({'network':'future','address':'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF'}),content_type='application/json').status_code,400)
     @override_settings(PAYMENTS_ENABLED=False)
     def test_unconnected_payments_disabled(self):
         self.client.force_login(self.user)

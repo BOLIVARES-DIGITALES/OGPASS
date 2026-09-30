@@ -13,10 +13,22 @@ WSGI_APPLICATION = 'config.wsgi.application'
 ASGI_APPLICATION = 'config.asgi.application'
 TEMPLATES = [{'BACKEND':'django.template.backends.django.DjangoTemplates','DIRS':[BASE_DIR/'templates'],'APP_DIRS':True,'OPTIONS':{'context_processors':['django.template.context_processors.request','django.contrib.auth.context_processors.auth','django.contrib.messages.context_processors.messages']}}]
 if os.getenv('POSTGRES_HOST'):
-    DATABASES = {'default': {'ENGINE':'django.db.backends.postgresql','HOST':os.environ['POSTGRES_HOST'],'NAME':os.getenv('POSTGRES_DB','ogpass'),'USER':os.getenv('POSTGRES_USER','ogpass'),'PASSWORD':os.environ['POSTGRES_PASSWORD'],'CONN_MAX_AGE':0}}
+    postgres_host = os.environ['POSTGRES_HOST']
+    postgres_sslmode = os.getenv('POSTGRES_SSLMODE', 'prefer' if DEBUG else ('disable' if postgres_host == 'db' else 'require'))
+    DATABASES = {'default': {
+        'ENGINE':'django.db.backends.postgresql',
+        'HOST':postgres_host,
+        'PORT':os.getenv('POSTGRES_PORT','5432'),
+        'NAME':os.getenv('POSTGRES_DB','ogpass'),
+        'USER':os.getenv('POSTGRES_USER','ogpass'),
+        'PASSWORD':os.environ['POSTGRES_PASSWORD'],
+        'CONN_MAX_AGE':int(os.getenv('POSTGRES_CONN_MAX_AGE','0')),
+        'DISABLE_SERVER_SIDE_CURSORS':os.getenv('POSTGRES_DISABLE_SERVER_SIDE_CURSORS','1') == '1',
+        'OPTIONS':{'sslmode':postgres_sslmode},
+    }}
 else:
     if not DEBUG: raise ImproperlyConfigured('Production requires PostgreSQL')
-    DATABASES = {'default':{'ENGINE':'django.db.backends.sqlite3','NAME':BASE_DIR/'db.sqlite3','OPTIONS':{'timeout':20}}}
+    DATABASES = {'default':{'ENGINE':'django.db.backends.sqlite3','NAME':Path(os.getenv('SQLITE_PATH', BASE_DIR/'db.sqlite3')),'OPTIONS':{'timeout':20}}}
 AUTH_PASSWORD_VALIDATORS = [{'NAME':'django.contrib.auth.password_validation.MinimumLengthValidator'},{'NAME':'django.contrib.auth.password_validation.CommonPasswordValidator'},{'NAME':'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'}]
 LANGUAGE_CODE = 'es-cl'
 TIME_ZONE = 'America/Santiago'
@@ -41,6 +53,11 @@ MP_ACCESS_TOKEN = os.getenv('MP_ACCESS_TOKEN','')
 MP_WEBHOOK_SECRET = os.getenv('MP_WEBHOOK_SECRET','')
 MP_COLLECTOR_ID = os.getenv('MP_COLLECTOR_ID','')
 PAYMENTS_ENABLED = all([MP_ACCESS_TOKEN, MP_WEBHOOK_SECRET, MP_COLLECTOR_ID]) and PUBLIC_URL.startswith('https://')
+CREDENTIAL_ENCRYPTION_KEY = os.getenv('CREDENTIAL_ENCRYPTION_KEY', SECRET_KEY if DEBUG else '')
+CREDENTIAL_HMAC_KEY = os.getenv('CREDENTIAL_HMAC_KEY', SECRET_KEY if DEBUG else '')
+MOVIRED_BALANCE_API_URL = os.getenv('MOVIRED_BALANCE_API_URL','')
+MOVIRED_BALANCE_API_TOKEN = os.getenv('MOVIRED_BALANCE_API_TOKEN','')
+MOVIRED_ALLOWED_HOSTS = tuple(filter(None, os.getenv('MOVIRED_ALLOWED_HOSTS','api.movired.cl,widget.movired.cl').split(',')))
 STELLAR_TESTNET_URL = 'https://horizon-testnet.stellar.org'
 STELLAR_MAINNET_URL = 'https://horizon.stellar.org'
 # Mainnet is read-only; no automatic migration or mixing with CLP.

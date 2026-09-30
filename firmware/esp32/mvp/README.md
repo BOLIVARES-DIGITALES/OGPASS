@@ -60,6 +60,23 @@ La suite PostgreSQL incluye carreras de dos cobros y rechazo de alteraciones/des
 
 Requisitos: Linux con Docker Engine + Compose, puertos 80/443 públicos, dominio A hacia la IP del servidor (AAAA solo si IPv6 funciona), acceso SSH. Copiar esta carpeta al servidor, por ejemplo `/opt/ogpass/mvp`. No copiar `db.sqlite3`, claves Testnet de prueba ni `.env` de otra instalación.
 
+### Alternativa rápida para piloto: Supabase Free como PostgreSQL
+
+Supabase reemplaza únicamente al contenedor PostgreSQL; no aloja la aplicación Django ni reemplaza sus reglas de saldo, lector, auditoría o ledger. El backend sigue siendo la única autoridad y el navegador nunca debe recibir la contraseña PostgreSQL ni una clave `service_role`.
+
+1. En Supabase abrir **Connect → Session pooler** y copiar host, puerto, base, usuario y contraseña. No confundir estos datos con `VITE_SUPABASE_URL` o la clave pública `anon`.
+2. Copiar `supabase.env.example` a `.env.supabase`, completar los valores y mantener permisos `600`.
+3. Construir la imagen, validar y aplicar las migraciones Django:
+
+```bash
+docker build -t ogpass-mvp .
+docker run --rm --env-file .env.supabase ogpass-mvp python deploy/preflight_supabase.py
+docker run --rm --env-file .env.supabase ogpass-mvp python manage.py migrate --noinput
+docker run --rm --env-file .env.supabase ogpass-mvp python manage.py provision_reader --name ESP32-001 --amount 1000 --cost 700
+```
+
+El último comando crea/rota `OGPASS_READER_TOKEN` y lo muestra una sola vez. Luego hay que desplegar la misma imagen Django bajo el hostname HTTPS definido en `PUBLIC_URL` (recomendado: `api.ogpass.xyz`). Supabase por sí solo no hará responder `/health/`. Para el plan Free se mantiene `CONN_MAX_AGE=0`, SSL obligatorio y cursores de servidor deshabilitados para ser compatible con el pooler. Es adecuado para un piloto; disponibilidad, cuotas y copias deben reevaluarse antes de producción.
+
 ### Dominio `ogpass.xyz` en Hostinger
 
 El dominio actualmente redirige a `bolivaresdigitales.online`; no cambies sus registros DNS hasta tener lista la IP pública del servidor y acordar el cambio de tráfico. Este despliegue con Docker Compose requiere un VPS Hostinger con Docker y acceso SSH; el hosting web compartido no ejecuta esta arquitectura. Para el corte, apunta el registro A de `@` a la IPv4 del VPS, configura `www` como CNAME a `ogpass.xyz` si se desea, y elimina registros AAAA solo si el VPS no ofrece IPv6 funcional. Permite tráfico entrante TCP 80/443 y UDP 443 para Caddy. Completa el `.env` local del servidor antes de ejecutar `preflight.py`; no copies el archivo local de desarrollo con marcadores.
@@ -106,6 +123,7 @@ Caddy obtiene/renueva el certificado del dominio automáticamente. Uvicorn ASGI 
 cd /home/uniquedev/Escritorio/OGPASS/firmware/esp32
 cp src/ogpass_config.example.h src/ogpass_config.h
 # Editar Wi-Fi, https://dominio, token del lector y CA raíz PEM válida.
+python3 scripts/validate_config.py
 /home/uniquedev/Escritorio/OGPASS/.venv/bin/pio device list
 /home/uniquedev/Escritorio/OGPASS/.venv/bin/pio run
 # Sustituir /dev/ttyUSB0 si device list informa otro puerto.
@@ -114,6 +132,12 @@ cp src/ogpass_config.example.h src/ogpass_config.h
 ```
 
 PN532 en modo I2C: SDA GPIO21, SCL GPIO22, GND común, alimentación conforme al módulo y lógica de 3,3 V compatible con ESP32. Firmware sincroniza NTP antes de TLS; el certificado CA debe validar la cadena actual del dominio. No usa `setInsecure`. Sin `ogpass_config.h` compila con conexión deshabilitada.
+
+`platformio.ini` ejecuta `scripts/validate_config.py` antes de cada build o carga. Mientras exista un marcador `TU_...`, falte el token provisionado, la URL no sea HTTPS o la CA raíz siga pendiente, PlatformIO se detiene sin mostrar secretos ni modificar el dispositivo.
+
+La vista «Soy desarrollador» puede verificar el lector por Web Serial desde Chrome o Edge en HTTPS o localhost. El usuario debe seleccionar el puerto USB explícitamente. La web envía `STATUS` a 115200 baudios y sólo marca el equipo listo después de recibir una línea `OGPASS_STATUS` válida que confirme ESP32, PN532, Wi-Fi y heartbeat reciente con la API. Esta verificación no lee ni modifica una tarjeta.
+
+En equipos con puente CP2102, seleccionar la fila `CP2102 USB to UART Bridge Controller` en el diálogo nativo antes de pulsar «Conectar». La interfaz filtra CP2102, CH340 y USB nativo de Espressif, reutiliza permisos anteriores y espera el reinicio del ESP32 al abrir el puerto. Mensajes `i2cRead returned Error 263` indican que el USB/ESP32 responde pero el PN532 no confirma I²C; revisar SDA GPIO21, SCL GPIO22, alimentación, GND común y selector I²C. Un puerto con actividad pero sin `OGPASS_STATUS` requiere actualizar el firmware.
 
 ## Activar Mercado Pago Chile
 
@@ -140,7 +164,24 @@ docker compose exec backend python manage.py stellar_account USUARIO --network m
 
 El contenedor es efímero: exportar inmediatamente la clave generada a custodia segura o usar `--address` con una cuenta creada en custodia propia. Nunca guardar claves en la base de datos ni repositorio. Testnet usa Friendbot y Horizon Testnet; Mainnet consulta exclusivamente Horizon público. Cada red tiene un registro separado y ninguna modifica CLP. XLM es el activo verificable inicial; emisión de un activo OGPASS/trustlines no está implementada. Los reinicios de Testnet pueden eliminar cuentas: la UI muestra `unfunded` y el comando permite fondear de nuevo.
 
+La ventana privada permite al cliente vincular por sí mismo una dirección pública `G…` por cada red y consultar su estado on-chain. Este flujo solo crea el registro local de lectura y consulta Horizon; rechaza claves secretas, no firma transacciones y no convierte activos Stellar en saldo CLP.
+
 Transporte: adaptador explícito `not_connected`, saldo `null`; hace falta identificar proveedor, documentación, endpoint y autorización. No intenta extraer ni modificar saldos de tarjetas ajenas.
+
+### Credenciales externas y consulta Movired
+
+`ExternalTransitCredential` separa las credenciales `OG`, `RED` y `SUBE` del tag NFC y del ledger. La referencia se cifra con `CREDENTIAL_ENCRYPTION_KEY`; `reference_hmac` permite detectar una asociación duplicada sin guardar el número en claro. Cada alta registra `consent_version`, `consented_at` y auditoría. Las respuestas al navegador sólo devuelven una referencia enmascarada.
+
+La interfaz usa el contrato autenticado del mismo dominio:
+
+- `GET /api/session/`: establece CSRF y confirma la sesión.
+- `POST /api/transit/credentials/`: declara la referencia con consentimiento explícito.
+- `POST /api/transit/credentials/<id>/balance/`: consulta la fuente correspondiente y guarda un `ExternalTransitBalanceSnapshot`.
+- `POST /api/transit/credentials/<id>/revoke/`: revoca la asociación y conserva la auditoría.
+
+OGPASS sólo devuelve un monto cuando `status` es `verified`. Los snapshots guardan `balance_amount` y `currency` por separado para admitir CLP y futuras monedas sin mezclar saldos. Para `OG`, exige que la tarjeta pertenezca a la wallet autenticada y consulta el ledger interno. Para `RED`, el conector permanece en `integration_required` hasta configurar `MOVIRED_BALANCE_API_URL` y `MOVIRED_BALANCE_API_TOKEN` entregados por Movired. No se reutilizan endpoints internos de `new.movired.cl`, no se evita CAPTCHA y no se extrae HTML. El contrato esperado del endpoint autorizado es JSON con `status: "verified"`, `balance_clp` entero no negativo y `observed_at` ISO-8601.
+
+La aplicación Lovable debe servirse bajo `ogpass.xyz` junto al backend o mediante un proxy del mismo origen para `/api/` y `/login/`. Esto conserva sesiones, CSRF y evita exponer tokens de proveedor al navegador.
 
 ## Operación, copias y rollback
 

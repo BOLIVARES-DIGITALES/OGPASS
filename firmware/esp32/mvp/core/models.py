@@ -136,3 +136,44 @@ class CardAssociationRequest(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     class Meta:
         constraints = [models.UniqueConstraint(fields=['wallet'], condition=Q(status='pending'), name='one_pending_card_request')]
+
+
+class ExternalTransitCredential(models.Model):
+    class Issuer(models.TextChoices):
+        OG = 'OG', 'OGPASS'
+        RED = 'RED', 'Red Movilidad'
+        SUBE = 'SUBE', 'SUBE'
+
+    class VerificationStatus(models.TextChoices):
+        DECLARED = 'declared', 'Declarada'
+        VERIFIED = 'verified', 'Verificada'
+        REVOKED = 'revoked', 'Revocada'
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='external_transit_credentials', on_delete=models.PROTECT)
+    issuer = models.CharField(max_length=8, choices=Issuer.choices)
+    encrypted_reference = models.TextField()
+    reference_hmac = models.CharField(max_length=64)
+    verification_status = models.CharField(max_length=12, choices=VerificationStatus.choices, default=VerificationStatus.DECLARED)
+    consent_version = models.CharField(max_length=48)
+    consented_at = models.DateTimeField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['issuer', 'reference_hmac'], name='unique_external_transit_reference')]
+        indexes = [models.Index(fields=['user', 'issuer', 'verification_status'], name='transit_credential_owner_idx')]
+
+
+class ExternalTransitBalanceSnapshot(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    credential = models.ForeignKey(ExternalTransitCredential, related_name='balance_snapshots', on_delete=models.PROTECT)
+    status = models.CharField(max_length=32)
+    balance_amount = models.BigIntegerField(null=True, blank=True)
+    currency = models.CharField(max_length=3)
+    source = models.CharField(max_length=120)
+    observed_at = models.DateTimeField(null=True, blank=True)
+    queried_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [models.Index(fields=['credential', '-queried_at'], name='transit_balance_recent_idx')]
