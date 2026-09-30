@@ -24,6 +24,9 @@ bool paymentArmed=false;
 unsigned long paymentArmedAt=0;
 unsigned long lastWifi=0,lastHeartbeat=0,lastRequest=0,lastDetected=0;
 bool readerReady=false;
+bool backendOnline=false;
+int lastHeartbeatCode=0;
+unsigned long lastHeartbeatSuccess=0;
 
 String uuid() {
   uint8_t b[16]; esp_fill_random(b,16);
@@ -59,6 +62,19 @@ void clearPending(){
   prefs.remove("pending");
   if(!prefs.getString("pending","").isEmpty()){Serial.println("ERROR NVS: conservando referencia para evitar duplicados");return;}
   pendingKey="";pendingUid="";pendingPurpose="balance";
+}
+void printStatus(){
+  JsonDocument status;
+  status["device"]="OGPASS-ESP32-PN532";
+  status["protocol"]=1;
+  status["reader_ready"]=readerReady;
+  status["wifi_connected"]=WiFi.status()==WL_CONNECTED;
+  status["backend_online"]=backendOnline && millis()-lastHeartbeatSuccess<45000;
+  status["heartbeat_code"]=lastHeartbeatCode;
+  status["pending_operation"]=!pendingKey.isEmpty();
+  Serial.print("OGPASS_STATUS ");
+  serializeJson(status,Serial);
+  Serial.println();
 }
 void servicePending(){
   if(pendingKey.isEmpty()||millis()-lastRequest<2500)return;
@@ -124,12 +140,19 @@ void loop(){
       serialCommand.trim();serialCommand.toUpperCase();
       if(serialCommand=="PAGAR"&&pendingKey.isEmpty()){paymentArmed=true;paymentArmedAt=now;Serial.println("PROXIMA LECTURA: PAGO, requiere confirmacion movil. Caduca en 30 s.");}
       else if(serialCommand=="SALDO"){paymentArmed=false;Serial.println("PROXIMA LECTURA: CONSULTA SIN COBRO");}
+      else if(serialCommand=="STATUS"){printStatus();}
       serialCommand="";
     }else if(serialCommand.length()<16){serialCommand+=c;}
   }
   if(paymentArmed&&now-paymentArmedAt>30000){paymentArmed=false;Serial.println("MODO PAGO EXPIRADO: vuelta a consulta de saldo");}
   if(WiFi.status()!=WL_CONNECTED&&now-lastWifi>10000){lastWifi=now;WiFi.reconnect();}
-  if(readerReady&&now-lastHeartbeat>15000){lastHeartbeat=now;String response;int code=api("/api/reader/heartbeat/","{}",response);if(code!=200)Serial.printf("Lector sin conexion verificada: %d\n",code);}
+  if(readerReady&&now-lastHeartbeat>15000){
+    lastHeartbeat=now;String response;int code=api("/api/reader/heartbeat/","{}",response);
+    lastHeartbeatCode=code;
+    backendOnline=code==200;
+    if(backendOnline)lastHeartbeatSuccess=now;
+    else Serial.printf("Lector sin conexion verificada: %d\n",code);
+  }
   servicePending();
   if(!readerReady){delay(100);return;}
   uint8_t uid[10],len=0;

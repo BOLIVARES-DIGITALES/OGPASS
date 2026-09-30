@@ -7,6 +7,24 @@ async function get(url){const r=await fetch(url,{headers:{Accept:'application/js
 if($('wallet-page')){
  let signature='',preloadSignature='',updating=false,queued=false,live=false,pendingDeadlines=[];
  document.querySelectorAll('a[href="#my-card"]').forEach(a=>a.addEventListener('click',()=>{$('my-card').open=true;}));
+ document.querySelectorAll('[data-amount]').forEach(button=>button.addEventListener('click',()=>{const amount=$('amount');amount.value=button.dataset.amount;amount.focus();document.querySelectorAll('[data-amount]').forEach(item=>item.classList.toggle('selected',item===button));}));
+ const topupForm=$('topup-form');
+ if(topupForm)topupForm.addEventListener('submit',()=>{const submit=$('topup-submit');if(submit.disabled)return;submit.disabled=true;submit.textContent='Abriendo pago seguro…';$('checkout-status').textContent='Te estamos llevando al checkout seguro. Tu saldo se actualizará cuando el pago sea confirmado.';});
+ const pairingForm=$('pairing-form');
+ if(pairingForm)pairingForm.addEventListener('submit',()=>{const submit=$('pairing-submit');submit.disabled=true;submit.textContent='Guardando tarjeta…';});
+ const stellarForm=$('stellar-link-form');
+ if(stellarForm)stellarForm.addEventListener('submit',async event=>{
+  event.preventDefault();const submit=$('stellar-link-submit');const status=$('stellar-link-status');
+  if(submit.disabled)return;submit.disabled=true;submit.textContent='Conectando…';status.textContent='Verificando tu dirección pública en Stellar…';
+  try{
+   const csrf=stellarForm.querySelector('[name=csrfmiddlewaretoken]').value;
+   const response=await fetch('/api/stellar/accounts/',{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json','X-CSRFToken':csrf},body:JSON.stringify({network:$('stellar-network').value,address:$('stellar-address').value})});
+   const data=await response.json();if(!response.ok)throw new Error(data.error||'No se pudo vincular la dirección.');
+   status.textContent=data.status==='connected'?'Dirección conectada. Datos on-chain actualizados.':'Dirección vinculada. Aún no registra fondos en esta red.';
+   $('stellar-address').value='';await external();
+  }catch(error){status.textContent=error.message||'No se pudo conectar la dirección. Verifica la red e inténtalo otra vez.';}
+  finally{submit.disabled=false;submit.textContent='Conectar y consultar';}
+ });
  async function update(){
   if(updating){queued=true;return;}
   updating=true;
@@ -50,14 +68,14 @@ if($('wallet-page')){
   }catch(e){$('connection').textContent='Sin conexión. El saldo mostrado puede estar desactualizado.';$('reader-status').textContent='No se puede verificar la conexión del lector en este momento.';}
   finally{updating=false;if(queued){queued=false;queueMicrotask(update);}}
  }
- async function external(){try{const d=await get('/api/external/');$('stellar').replaceChildren();if(!d.stellar.length)$('stellar').append(el('p','Stellar Testnet: cuenta pendiente de crear. Sin saldo consultado.','muted'));for(const a of d.stellar){$('stellar').append(el('h3',a.network==='testnet'?'Stellar Testnet · Activos de prueba':'Stellar Mainnet · Activos en red pública'),el('small',a.address));if(a.network==='testnet')$('stellar').append(el('p','Sin valor monetario real. No es saldo CLP.','muted'));if(a.status!=='connected')$('stellar').append(el('p','Estado: '+a.status+' · saldo no disponible'));else{for(const b of a.balances){$('stellar').append(el('p',b.balance+' '+(b.asset_type==='native'?'XLM':b.asset_code)),el('small',b.asset_issuer||'Activo nativo'));}const link=el('a','Ver fuente en Horizon ↗');link.href=a.source_url;link.target='_blank';link.rel='noopener';$('stellar').append(link,el('small','Consultado: '+new Date(a.updated_at).toLocaleString('es-CL')));}}}catch(e){$('stellar').textContent='Stellar: conexión no disponible. Sin saldo verificado.';}}
+ async function external(){try{const d=await get('/api/external/');const target=$('stellar-results');target.replaceChildren();if(!d.stellar.length)target.append(el('p','Conecta una dirección pública para consultar sus activos on-chain.','muted'));for(const a of d.stellar){target.append(el('h3',a.network==='testnet'?'Stellar Testnet · Activos de prueba':'Stellar Mainnet · Solo lectura'),el('small',a.address));if(a.network==='testnet')target.append(el('p','Testnet no tiene valor monetario real y no es saldo CLP.','muted'));if(a.status!=='connected')target.append(el('p','Estado: '+a.status+' · saldo no disponible'));else{for(const b of a.balances){target.append(el('p',b.balance+' '+(b.asset_type==='native'?'XLM':b.asset_code)),el('small',b.asset_issuer||'Activo nativo'));}const link=el('a','Ver fuente en Horizon ↗');link.href=a.source_url;link.target='_blank';link.rel='noopener';target.append(link,el('small','Consultado: '+new Date(a.updated_at).toLocaleString('es-CL')));}}}catch(e){$('stellar-results').textContent='Stellar: conexión no disponible. Sin saldo verificado.';}}
  async function transport(){
   const target=$('transport-result');
   try{
    const data=await get('/api/transport/');target.replaceChildren();
    if(!data.cards.length){target.append(el('p',data.message));return;}
    for(const card of data.cards){
-    const row=el('div',undefined,'linked-card');row.append(el('strong','Tarjeta '+card.card_number),el('p','Saldo: no disponible en OGPASS'),el('small','Fuente: '+data.source));
+    const row=el('div',undefined,'linked-card');row.append(el('strong','Tarjeta '+card.card_number),el('p','Saldo de transporte: no disponible en OGPASS'),el('small','Fuente: '+data.source));
     const copy=el('button','Copiar número','secondary');copy.type='button';copy.onclick=async()=>{try{await navigator.clipboard.writeText(card.card_number);copy.textContent='Número copiado';}catch(error){copy.textContent='Número: '+card.card_number;}};const monitor=el('button','Monitor NFC / Copiar a llavero','secondary');monitor.type='button';monitor.onclick=()=>openNfcMonitor(card.card_number,monitor);const actions=el('div',undefined,'card-tools');actions.append(copy,monitor);row.append(actions);target.append(row);
    }
    target.append(el('p',data.message));

@@ -11,13 +11,25 @@ from django.db import transaction, IntegrityError
 from django.http import JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.utils import timezone
-from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
 from django.views.decorators.http import require_POST, require_GET
-from .models import Wallet, Reader, Tag, Operation, TopUp, Audit, StellarAccount, CardScan, Preload, CardAssociationRequest
+from .models import Wallet, Reader, Tag, Operation, TopUp, Audit, StellarAccount, CardScan, Preload, CardAssociationRequest, ExternalTransitCredential
 from .services import balance, bind_tag, touch, decide, reverse_operation, apply_payment, reconciliation, Conflict, expire_operations
 from .adapters import MercadoPago, Stellar, Transport, IntegrationError
 from .cards import associate_scan, record_scan, scan_data, card_number_normalize
 from .preloads import issue_preload, activate_preload, cancel_preload
+from .transit_credentials import CredentialConflict, CredentialError, credential_data, declare_credential, query_balance, revoke_credential
+
+
+def stellar_public_address(value):
+    """Validate a public Stellar account; secrets are never accepted by this API."""
+    from stellar_sdk import Keypair
+    address = str(value or '').strip()
+    try:
+        Keypair.from_public_key(address)
+    except Exception as exc:
+        raise ValueError('Ingresa una dirección pública Stellar válida (G...).') from exc
+    return address
 
 def api_errors(fn):
     @wraps(fn)
@@ -29,7 +41,57 @@ def api_errors(fn):
         except IntegrationError as e: return JsonResponse({'error':str(e)},status=503)
     return wrapped
 
+def api_login_required(fn):
+    @wraps(fn)
+    def wrapped(request,*a,**kw):
+        if not request.user.is_authenticated:
+            return JsonResponse({'error':'authentication_required'},status=401)
+        return fn(request,*a,**kw)
+    return wrapped
+
 def wallet_for(user): return Wallet.objects.get_or_create(user=user)[0]
+
+@ensure_csrf_cookie
+@require_GET
+def session_state(request):
+    return JsonResponse({'authenticated':request.user.is_authenticated,'user':request.user.username if request.user.is_authenticated else None})
+
+@api_login_required
+@require_POST
+def transit_credentials(request):
+    try:
+        payload=json.loads(request.body)
+        if payload.get('consent') is not True:
+            raise CredentialError('Debes aceptar el uso indicado de la credencial.')
+        credential,created=declare_credential(request.user,payload.get('issuer'),payload.get('reference'),payload.get('consent_version'))
+        response=JsonResponse({'credential':credential_data(credential),'created':created},status=201 if created else 200)
+    except CredentialConflict as exc:
+        response=JsonResponse({'error':str(exc)},status=409)
+    except (CredentialError,ValueError,TypeError) as exc:
+        response=JsonResponse({'error':str(exc) or 'Solicitud inválida'},status=400)
+    except IntegrityError:
+        response=JsonResponse({'error':'La credencial ya está asociada.'},status=409)
+    response['Cache-Control']='no-store, private'
+    return response
+
+@api_login_required
+@require_POST
+def transit_credential_balance(request,credential_id):
+    credential=get_object_or_404(ExternalTransitCredential,pk=credential_id,user=request.user)
+    try:
+        response=JsonResponse(query_balance(credential))
+    except CredentialError as exc:
+        response=JsonResponse({'error':str(exc)},status=503)
+    response['Cache-Control']='no-store, private'
+    return response
+
+@api_login_required
+@require_POST
+def revoke_transit_credential(request,credential_id):
+    credential=get_object_or_404(ExternalTransitCredential,pk=credential_id,user=request.user)
+    response=JsonResponse({'credential':credential_data(revoke_credential(credential,request.user.pk))})
+    response['Cache-Control']='no-store, private'
+    return response
 
 def reader_auth(request):
     token = request.headers.get('Authorization','').removeprefix('Bearer ')
@@ -79,6 +141,38 @@ def external_state(request):
     wallet = wallet_for(request.user)
     return JsonResponse({'stellar':[Stellar().balance(a) for a in StellarAccount.objects.filter(wallet=wallet)],'transport':Transport().balance(wallet)})
 
+
+@login_required
+@require_POST
+@api_errors
+def link_stellar_account(request):
+    """Link one self-custodied public account per network to the caller's wallet."""
+    payload = json.loads(request.body)
+    network = payload.get('network')
+    if network not in ('testnet', 'mainnet'):
+        raise ValueError('Selecciona Testnet o Mainnet.')
+    address = stellar_public_address(payload.get('address'))
+    wallet = wallet_for(request.user)
+    created = False
+    with transaction.atomic():
+        account = StellarAccount.objects.select_for_update().filter(wallet=wallet, network=network).first()
+        if account and account.address != address:
+            raise Conflict('Ya tienes una dirección vinculada para esta red. No se reemplaza automáticamente.')
+        if account is None:
+            account = StellarAccount.objects.create(wallet=wallet, network=network, address=address)
+            created = True
+            Audit.objects.create(
+                actor=str(request.user.pk),
+                event='stellar_account_linked',
+                reference=address,
+                details={'network': network, 'mode': 'public_read_only'},
+            )
+    result = Stellar().balance(account)
+    result['created'] = created
+    response = JsonResponse(result, status=201 if created else 200)
+    response['Cache-Control'] = 'no-store, private'
+    return response
+
 @login_required
 @require_POST
 def associate(request):
@@ -88,7 +182,7 @@ def associate(request):
         from .cards import request_association
         try:
             request_association(wallet_for(request.user),number)
-            messages.success(request,'Número de tarjeta guardado. Revisa la consulta de saldo bip! en Mi tarjeta.')
+            messages.success(request,'Número de tarjeta guardado. Revisa en Mi tarjeta las fuentes de saldo disponibles.')
         except ValueError as e: messages.error(request,str(e))
         return redirect('/#my-card')
     try:

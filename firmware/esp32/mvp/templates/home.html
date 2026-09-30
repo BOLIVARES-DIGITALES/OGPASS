@@ -2,23 +2,28 @@
 {% block content %}
 <div id="wallet-page">
   <div class="heading">
-    <div><p class="eyebrow">TU CUENTA / {{ user.username }}</p><h1>Tu cuenta, a mano.</h1></div>
+    <div><p class="eyebrow">TU CUENTA / {{ user.username }}</p><h1>Tu saldo, siempre claro.</h1><p class="page-intro">Asocia tu tarjeta, consulta tus fondos OGPASS y recarga de forma segura desde un solo lugar.</p></div>
     <span class="pill">● OGPASS CLP</span>
   </div>
   <section id="pending" aria-live="polite"></section>
+  <section class="client-journey" aria-label="Cómo usar tu cuenta OGPASS">
+    <div class="journey-step {% if tags %}complete{% endif %}"><span>1</span><div><strong>{% if tags %}Tarjeta asociada{% else %}Asocia tu tarjeta{% endif %}</strong><small>{% if tags %}Tu tarjeta ya está vinculada a esta cuenta.{% else %}Ingresa sus nueve dígitos para comenzar.{% endif %}</small></div></div>
+    <div class="journey-step"><span>2</span><div><strong>Consulta tus fondos</strong><small>El saldo OGPASS se actualiza desde tu ledger.</small></div></div>
+    <div class="journey-step"><span>3</span><div><strong>Recarga con seguridad</strong><small>Tu saldo cambia solo después de la confirmación de pago.</small></div></div>
+  </section>
 
   <div class="wallet-panels">
     <section class="balance" aria-labelledby="funds-title">
       <p class="eyebrow">01 / TU SALDO</p>
       <h2 id="funds-title">Fondos</h2>
-      <p>Fondos OGPASS</p>
+      <p>Disponible en OGPASS</p>
       <div class="money" id="balance">${{ balance }}</div>
-      <p>CLP · Disponible para operaciones OGPASS</p>
+      <p>CLP · Disponible para tus operaciones OGPASS</p>
       <small id="updated">Consultando ledger…</small>
       <p id="connection" role="status"></p>
       <p id="frozen" class="notice" {% if not wallet.frozen %}hidden{% endif %}>Cuenta en revisión. Operaciones suspendidas.</p>
-      <a class="button light" href="#recargar">＋ Recargar</a>
-      <a class="card-link" href="#my-card">{% if tags %}Ver mi tarjeta{% else %}Asociar mi tarjeta{% endif %}</a>
+      <a class="button light" href="#recargar">Recargar saldo</a>
+      <a class="card-link" href="#my-card">{% if tags %}Gestionar mi tarjeta asociada{% else %}Asociar mi tarjeta{% endif %}</a>
       <div id="scan-status" class="scan-status" role="status">Escanea tu tarjeta asociada para consultar tus fondos OGPASS.</div>
     </section>
 
@@ -31,43 +36,40 @@
 
     <section class="card" id="recargar" aria-labelledby="topups-title">
       <p class="eyebrow">03 / AGREGA SALDO</p>
-      <h2 id="topups-title">Recargas</h2>
-      <div class="preloads-section">
-        <h3>Prerecargas por activar</h3>
-        <p class="muted">Fondos OGPASS reservados para ti. Sin vencimiento configurado; se acreditan una sola vez al activarlos.</p>
-        <div id="preloads" aria-live="polite"><p class="muted">Consultando prerecargas…</p></div>
-        <p id="preload-message" role="status"></p>
-      </div>
-      <hr><h3>Agregar nuevos fondos</h3>
-      <p>La acreditación aparece cuando el proveedor confirma el pago.</p>
-      <form action="/topups/" method="post">
+      <h2 id="topups-title">Recarga tu cuenta</h2>
+      <p>Elige un monto. Abriremos el checkout seguro de Mercado Pago; tu saldo se acreditará automáticamente cuando el pago sea confirmado.</p>
+      <form action="/topups/" method="post" id="topup-form">
         {% csrf_token %}
         <input type="hidden" name="key" value="{{ topup_key }}">
         <label for="amount">Importe en CLP</label>
-        <input id="amount" type="number" name="amount" min="500" max="200000" step="1" value="5000" required>
-        <button {% if not payments_enabled %}disabled{% endif %}>Pagar con Mercado Pago ↗</button>
+        <input id="amount" type="number" name="amount" min="500" max="200000" step="1" value="5000" required inputmode="numeric" aria-describedby="topup-help">
+        <div class="amount-presets" aria-label="Montos sugeridos"><button type="button" class="secondary" data-amount="5000">$5.000</button><button type="button" class="secondary" data-amount="10000">$10.000</button><button type="button" class="secondary" data-amount="20000">$20.000</button></div>
+        <small id="topup-help">Monto mínimo $500 · máximo $200.000 CLP</small>
+        <button id="topup-submit" {% if not payments_enabled %}disabled{% endif %}>Continuar al pago seguro ↗</button>
       </form>
-      {% if not payments_enabled %}<p class="muted">Medio de pago pendiente de conexión. No se acreditan recargas simuladas.</p>{% endif %}
+      <p id="checkout-status" class="checkout-status" role="status"></p>
+      {% if not payments_enabled %}<p class="notice compact">Los pagos todavía no están conectados. No se crearán recargas simuladas.</p>{% else %}<p class="secure-note">Tu saldo no cambia al abrir el checkout; se actualiza solo tras la confirmación verificada del proveedor.</p>{% endif %}
+      <details class="preloads-section"><summary>¿Tienes una prerecarga?</summary><p class="muted">Fondos OGPASS reservados para ti. Se acreditan una sola vez al activarlos.</p><div id="preloads" aria-live="polite"><p class="muted">Consultando prerecargas…</p></div><p id="preload-message" role="status"></p></details>
     </section>
   </div>
 
   <div class="grid wallet-extras">
     <details class="card card-pairing" id="my-card" {% if not tags or card_number or association_request %}open{% endif %}>
       <summary>Mi tarjeta</summary>
-      <h2>Tu tarjeta bip!</h2>
-      <p>Guarda su número de nueve dígitos para acceder a la consulta oficial de saldo. No necesitas el lector para consultar el portal bip!.</p>
+      <h2>Asocia tu tarjeta</h2>
+      <p>Guarda el número de nueve dígitos en tu cuenta. La asociación con el lector se confirma solo mediante una lectura física autorizada.</p>
       <div id="linked-cards" aria-live="polite">{% for tag in tags %}<div class="linked-card"><strong>Tarjeta {{ tag.card_number }}</strong><p>{% if tag.active %}Asociada{% else %}Desactivada{% endif %}</p></div>{% endfor %}</div>
       <form action="/tags/" method="post" id="pairing-form">
         {% csrf_token %}
-        <label for="card-number">ID de la tarjeta</label>
+        <label for="card-number">Número de tu tarjeta</label>
         <input name="card_number" id="card-number" inputmode="numeric" autocomplete="off" placeholder="Ej. 114309782" value="{{ card_number }}" minlength="9" maxlength="9" pattern="[0-9]{9}" required aria-describedby="card-help">
-        <small id="card-help">Nueve dígitos impresos en tu tarjeta.</small>
-        <button>Guardar tarjeta y consultar</button>
+        <small id="card-help">Los nueve dígitos impresos en tu tarjeta. No es tu UID ni un dato bancario.</small>
+        <button id="pairing-submit">Asociar tarjeta</button>
       </form>
       <section class="transport-balance" aria-labelledby="transport-title">
-        <h3 id="transport-title">Saldo bip! · Transporte</h3>
+        <h3 id="transport-title">Consulta de transporte</h3>
         <div id="transport-result" aria-live="polite"><p>Comprobando la consulta oficial…</p></div>
-        <p class="muted">Saldo informado por el operador, separado de tus fondos OGPASS. La fecha de consulta no garantiza que incluya tus últimos viajes.</p>
+        <p class="muted">Si está disponible, el saldo del operador se muestra separado de tus fondos OGPASS. OGPASS no inventa ni modifica saldo de transporte.</p>
       </section>
       <details><summary>Usar esta tarjeta con el lector OGPASS</summary>
       <p id="association-status" role="status">{% if association_request %}Tarjeta {{ association_request.card_number }} · Vinculación al lector OGPASS pendiente.{% endif %}</p>
@@ -76,9 +78,20 @@
     </details>
     <details class="card">
       <summary>Stellar</summary>
-      <p class="eyebrow">OTRAS FUENTES / SIN CONVERSIÓN A CLP</p>
-      <h2>Activos verificables.</h2>
-      <div id="stellar">Consultando Stellar…</div>
+      <p class="eyebrow">ACTIVOS ON-CHAIN / SIN CONVERSIÓN A CLP</p>
+      <h2>Conecta tu dirección Stellar.</h2>
+      <p class="muted">Vincula una dirección pública para consultar datos on-chain. OGPASS no recibe claves, no firma y no mueve tus activos.</p>
+      <form id="stellar-link-form">
+        {% csrf_token %}
+        <label for="stellar-network">Red</label>
+        <select id="stellar-network" name="network"><option value="testnet">Stellar Testnet</option><option value="mainnet">Stellar Mainnet · solo lectura</option></select>
+        <label for="stellar-address">Dirección pública</label>
+        <input id="stellar-address" name="address" autocomplete="off" spellcheck="false" placeholder="G…" aria-describedby="stellar-help" required>
+        <small id="stellar-help">Solo direcciones públicas que comienzan con G. Nunca pegues una clave secreta.</small>
+        <button id="stellar-link-submit">Conectar y consultar</button>
+      </form>
+      <p id="stellar-link-status" role="status"></p>
+      <div id="stellar-results" aria-live="polite">Consultando Stellar…</div>
 
     </details>
   </div>

@@ -32,7 +32,7 @@ class BrowserFlow(LiveServerTestCase):
             pair=requests.post(self.live_server_url+'/api/reader/scans/',json={'uid':'04AB1234567890','key':str(uuid.uuid4())},headers=headers,timeout=10).json()
             self.assertEqual(pair['status'],'pairing_required')
             page.locator('#card-number').fill('114309782')
-            page.get_by_role('button',name='Guardar tarjeta y consultar',exact=True).click()
+            page.get_by_role('button',name='Asociar tarjeta',exact=True).click()
             page.locator('#transport-result a').wait_for()
             self.assertIn('CAPTCHA',page.locator('#transport-result').inner_text())
             self.assertIn('114309782',page.locator('#transport-result').inner_text())
@@ -71,7 +71,7 @@ class BrowserFlow(LiveServerTestCase):
             page.wait_for_selector('.linked-card')
             page.route('https://www.mercadopago.cl/checkout/test',lambda route:route.fulfill(status=200,content_type='text/html',body='<h1>Checkout controlado: PRUEBA, sin fondos reales</h1>'))
             with patch('core.adapters.MercadoPago.checkout',return_value=('fixture-preference','https://www.mercadopago.cl/checkout/test')):
-                page.locator('#amount').fill('5000');page.get_by_role('button',name='Pagar con Mercado Pago').click()
+                page.locator('#amount').fill('5000');page.get_by_role('button',name='Continuar al pago seguro').click()
                 page.wait_for_url('https://www.mercadopago.cl/checkout/test')
             def db_read(fn):
                 def work():
