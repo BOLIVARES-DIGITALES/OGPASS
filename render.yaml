@@ -1,0 +1,45 @@
+services:
+  - type: web
+    name: ogpass-api
+    runtime: docker
+    plan: free
+    branch: main
+    dockerfilePath: ./firmware/esp32/mvp/Dockerfile
+    dockerContext: ./firmware/esp32/mvp
+    healthCheckPath: /health/
+    autoDeployTrigger: commit
+    domains:
+      - api.ogpass.xyz
+    envVars:
+      - key: DEBUG
+        value: "0"
+      - key: DOMAIN
+        value: api.ogpass.xyz
+      - key: PUBLIC_URL
+        value: https://api.ogpass.xyz
+      - key: ALLOWED_HOSTS
+        value: api.ogpass.xyz,.onrender.com
+      - key: WEB_CONCURRENCY
+        value: "2"
+      - key: POSTGRES_PORT
+        value: "5432"
+      - key: POSTGRES_DB
+        value: postgres
+      - key: POSTGRES_SSLMODE
+        value: require
+      - key: POSTGRES_CONN_MAX_AGE
+        value: "0"
+      - key: POSTGRES_DISABLE_SERVER_SIDE_CURSORS
+        value: "1"
+      - key: SECRET_KEY
+        sync: false
+      - key: POSTGRES_HOST
+        sync: false
+      - key: POSTGRES_USER
+        sync: false
+      - key: POSTGRES_PASSWORD
+        sync: false
+      - key: CREDENTIAL_ENCRYPTION_KEY
+        sync: false
+      - key: CREDENTIAL_HMAC_KEY
+        sync: false
