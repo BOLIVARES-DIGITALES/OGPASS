@@ -7,4 +7,4 @@ COPY --chown=app:app . .
 RUN DEBUG=1 python manage.py collectstatic --noinput
 USER app
 EXPOSE 8000
-CMD ["uvicorn", "config.asgi:application", "--host", "0.0.0.0", "--port", "8000", "--workers", "3", "--proxy-headers"]
+CMD ["sh", "-c", "python manage.py migrate --noinput && exec uvicorn config.asgi:application --host 0.0.0.0 --port ${PORT:-8000} --workers ${WEB_CONCURRENCY:-2} --proxy-headers"]
