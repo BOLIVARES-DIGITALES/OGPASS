@@ -26,3 +26,7 @@ Juernes debe priorizar:
 
 El documento principal de contexto está en `docs/OGPASS_CONTEXT.md`.
 La guía de comportamiento de Juernes está en `docs/JUERNES_ASSISTANT.md`.
+
+## Preparar otra máquina
+
+Para copiar el proyecto y continuar las pruebas del ESP32/PN532 en Ubuntu, sigue [UBUNTU_SETUP.md](UBUNTU_SETUP.md). El script `scripts/bootstrap_ubuntu.sh` crea el entorno Python, instala PlatformIO y genera las plantillas privadas locales sin incluir secretos en Git.

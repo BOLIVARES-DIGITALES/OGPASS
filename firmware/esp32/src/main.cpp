@@ -16,8 +16,20 @@
 #define OGPASS_READER_TOKEN ""
 #define OGPASS_ROOT_CA ""
 #endif
+#ifndef OGPASS_ALLOW_PAYMENTS
+#define OGPASS_ALLOW_PAYMENTS 0
+#endif
 
-Adafruit_PN532 nfc(-1, -1);
+constexpr uint8_t PN532_IRQ_PIN = 27;
+constexpr uint8_t PN532_RESET_PIN = 26;
+constexpr uint8_t PN532_SDA_PIN = 21;
+constexpr uint8_t PN532_SCL_PIN = 22;
+
+// The Adafruit I2C constructor requires valid IRQ/reset GPIO numbers even on
+// four-wire PN532 boards where those two signals are not connected. I2C
+// readiness is polled over Wire, so these pins remain available for an
+// optional future IRQ/reset connection without being required for reads.
+Adafruit_PN532 nfc(PN532_IRQ_PIN, PN532_RESET_PIN, &Wire);
 Preferences prefs;
 String pendingKey, pendingUid, heldUid, pendingPurpose="balance", serialCommand;
 bool paymentArmed=false;
@@ -28,6 +40,21 @@ bool backendOnline=false;
 int lastHeartbeatCode=0;
 unsigned long lastHeartbeatSuccess=0;
 
+bool scanI2cBus(){
+  constexpr uint8_t address=0x24;
+  Serial.println("OGPASS_I2C_SCAN_BEGIN");
+  Wire.beginTransmission(address);
+  uint8_t error=Wire.endTransmission();
+  bool pn532Found=error==0;
+  if(pn532Found){
+    Serial.printf("OGPASS_I2C_DEVICE 0x%02X\n",address);
+  }else{
+    Serial.printf("OGPASS_I2C_ERROR address=0x%02X code=%u\n",address,error);
+  }
+  Serial.printf("OGPASS_I2C_SCAN_END devices=%u pn532=%s\n",pn532Found?1:0,pn532Found?"detected":"not_detected");
+  return pn532Found;
+}
+
 String uuid() {
   uint8_t b[16]; esp_fill_random(b,16);
   b[6]=(b[6]&0x0F)|0x40; b[8]=(b[8]&0x3F)|0x80;
@@ -37,6 +64,18 @@ String uuid() {
 }
 String uidText(uint8_t* uid,uint8_t length) {
   String result; for(uint8_t i=0;i<length;i++){if(uid[i]<16)result+="0";result+=String(uid[i],HEX);} result.toUpperCase(); return result;
+}
+String uidMasked(const String& uid) {
+  if(uid.length()<=6)return uid.substring(0,2)+"••••";
+  return uid.substring(0,4)+"••••"+uid.substring(uid.length()-4);
+}
+void printNfcEvent(const String& state,const String& maskedUid=""){
+  JsonDocument event;
+  event["state"]=state;
+  if(!maskedUid.isEmpty())event["masked_uid"]=maskedUid;
+  Serial.print("OGPASS_NFC_EVENT ");
+  serializeJson(event,Serial);
+  Serial.println();
 }
 int api(const String& path,const String& body,String& response,bool post=true) {
   if(WiFi.status()!=WL_CONNECTED) return -1;
@@ -126,10 +165,18 @@ void setup(){
   if(strlen(OGPASS_WIFI_SSID)==0){Serial.println("CONFIGURACION PENDIENTE: copiar src/ogpass_config.example.h a src/ogpass_config.h");}
   WiFi.mode(WIFI_STA);WiFi.begin(OGPASS_WIFI_SSID,OGPASS_WIFI_PASSWORD);
   configTime(0,0,"pool.ntp.org","time.nist.gov");
-  Wire.begin(21,22);nfc.begin();
-  uint32_t version=nfc.getFirmwareVersion();
-  readerReady=version!=0;
-  if(readerReady){nfc.SAMConfig();nfc.setPassiveActivationRetries(0x01);Serial.println("PN532 listo: ISO14443A UID. No se modifica la tarjeta.");}
+  Wire.begin(PN532_SDA_PIN,PN532_SCL_PIN,100000);
+  // Keep discovery fast: a long timeout multiplied by 126 addresses can make
+  // startup appear frozen when the bus is busy or a cable is intermittent.
+  Wire.setTimeOut(50);
+  bool pn532Present=scanI2cBus();
+  // PN532 can hold SCL while preparing a response. Allow that only after the
+  // diagnostic scan, so normal NFC commands do not surface i2c Error 263.
+  Wire.setTimeOut(1000);
+  uint32_t version=0;
+  if(pn532Present){nfc.begin();version=nfc.getFirmwareVersion();}
+  readerReady=pn532Present&&version!=0;
+  if(readerReady){nfc.setPassiveActivationRetries(0x01);Serial.println("PN532 listo: ISO14443A UID. No se modifica la tarjeta.");}
   else Serial.println("PN532 NO DETECTADO: revisar I2C, alimentacion y selector del modulo");
 }
 void loop(){
@@ -138,8 +185,12 @@ void loop(){
     char c=Serial.read();
     if(c=='\n'||c=='\r'){
       serialCommand.trim();serialCommand.toUpperCase();
-      if(serialCommand=="PAGAR"&&pendingKey.isEmpty()){paymentArmed=true;paymentArmedAt=now;Serial.println("PROXIMA LECTURA: PAGO, requiere confirmacion movil. Caduca en 30 s.");}
+      if(serialCommand=="PAGAR"&&pendingKey.isEmpty()){
+        if(OGPASS_ALLOW_PAYMENTS){paymentArmed=true;paymentArmedAt=now;Serial.println("PROXIMA LECTURA: PAGO, requiere confirmacion movil. Caduca en 30 s.");}
+        else Serial.println("PAGOS DESHABILITADOS: este lector opera solo en modo consulta");
+      }
       else if(serialCommand=="SALDO"){paymentArmed=false;Serial.println("PROXIMA LECTURA: CONSULTA SIN COBRO");}
+      else if(serialCommand=="I2CSCAN"){scanI2cBus();}
       else if(serialCommand=="STATUS"){printStatus();}
       serialCommand="";
     }else if(serialCommand.length()<16){serialCommand+=c;}
@@ -163,7 +214,7 @@ void loop(){
   String current=uidText(uid,len);
   if(current==heldUid||!pendingKey.isEmpty())return;
   heldUid=current;
-  Serial.println("TAG UID: "+current);
+  printNfcEvent("detected",uidMasked(current));
   if(WiFi.status()!=WL_CONNECTED){Serial.println("SIN CONEXION: retira el tag y vuelve a tocar cuando haya red");return;}
   String purpose=paymentArmed?"payment":"balance";
   if(!savePending(uuid(),current,purpose))return;

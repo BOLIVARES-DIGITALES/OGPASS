@@ -89,6 +89,24 @@ type HardwareDiagnostic = {
   pending_operation: boolean;
 };
 
+type NfcReading = {
+  status:
+    | "idle"
+    | "detected"
+    | "querying"
+    | "balance"
+    | "pairing_required"
+    | "disabled"
+    | "offline"
+    | "error";
+  maskedUid?: string;
+  maskedCard?: string;
+  balance?: number;
+  pairingCode?: string;
+  message: string;
+  readAt?: string;
+};
+
 type SerialPortLike = {
   readable: ReadableStream<Uint8Array> | null;
   writable: WritableStream<Uint8Array> | null;
@@ -913,7 +931,14 @@ function DeveloperView({ onBack }: { onBack: () => void }) {
   const [diagnostic, setDiagnostic] = useState<HardwareDiagnostic | null>(null);
   const [hardwareError, setHardwareError] = useState("");
   const [portConnected, setPortConnected] = useState(false);
+  const [monitoringNfc, setMonitoringNfc] = useState(false);
+  const [nfcReading, setNfcReading] = useState<NfcReading>({
+    status: "idle",
+    message: "Conecta y verifica el lector para comenzar.",
+  });
   const portRef = useRef<SerialPortLike | null>(null);
+  const serialReaderRef = useRef<ReadableStreamDefaultReader<Uint8Array> | null>(null);
+  const monitorGenerationRef = useRef(0);
   const snippet = [
     "const port = await navigator.serial.requestPort();",
     "await port.open({ baudRate: 115200 });",
@@ -933,8 +958,13 @@ function DeveloperView({ onBack }: { onBack: () => void }) {
   useEffect(() => {
     const serial = serialAccess();
     const disconnected = () => {
+      monitorGenerationRef.current += 1;
+      const reader = serialReaderRef.current;
+      serialReaderRef.current = null;
+      if (reader) void reader.cancel().catch(() => undefined);
       portRef.current = null;
       setPortConnected(false);
+      setMonitoringNfc(false);
       setDiagnostic(null);
       setHardwareError("El lector USB fue desconectado del equipo.");
       setHardwareState("error");
@@ -942,23 +972,171 @@ function DeveloperView({ onBack }: { onBack: () => void }) {
     serial?.addEventListener("disconnect", disconnected);
     return () => {
       serial?.removeEventListener("disconnect", disconnected);
+      monitorGenerationRef.current += 1;
+      const reader = serialReaderRef.current;
+      serialReaderRef.current = null;
+      if (reader) void reader.cancel().catch(() => undefined);
       const port = portRef.current;
       portRef.current = null;
       if (port) void port.close().catch(() => undefined);
     };
   }, []);
 
+  async function stopNfcMonitor() {
+    monitorGenerationRef.current += 1;
+    const reader = serialReaderRef.current;
+    serialReaderRef.current = null;
+    if (reader) await reader.cancel().catch(() => undefined);
+    setMonitoringNfc(false);
+  }
+
+  function maskIdentifier(value: string) {
+    const normalized = value.trim();
+    if (normalized.length <= 6) return `${normalized.slice(0, 2)}••••`;
+    return `${normalized.slice(0, 4)}••••${normalized.slice(-4)}`;
+  }
+
+  function handleNfcLine(line: string) {
+    const readAt = new Date().toISOString();
+    if (line.startsWith("OGPASS_NFC_EVENT ")) {
+      try {
+        const event = JSON.parse(line.slice("OGPASS_NFC_EVENT ".length)) as {
+          state?: string;
+          masked_uid?: string;
+        };
+        if (event.state === "detected" && event.masked_uid) {
+          setNfcReading({
+            status: "detected",
+            maskedUid: event.masked_uid,
+            message: "Tarjeta detectada. Esperando respuesta segura de OGPASS…",
+            readAt,
+          });
+        }
+      } catch {
+        setNfcReading({ status: "error", message: "El lector envió un evento NFC inválido." });
+      }
+      return;
+    }
+    const uid = line.match(/^TAG UID:\s*([0-9A-F]+)$/i);
+    if (uid) {
+      setNfcReading({
+        status: "detected",
+        maskedUid: maskIdentifier(uid[1]),
+        message: "Tarjeta detectada. Esperando respuesta segura de OGPASS…",
+        readAt,
+      });
+      return;
+    }
+    if (/^Consultando fondos OGPASS/i.test(line)) {
+      setNfcReading((current) => ({
+        ...current,
+        status: "querying",
+        message: "Consultando saldo OGPASS sin realizar un cobro…",
+        readAt: current.readAt ?? readAt,
+      }));
+      return;
+    }
+    const pairing = line.match(/^CODIGO PARA ASOCIAR:\s*([0-9A-F]{10})/i);
+    if (pairing) {
+      setNfcReading((current) => ({
+        ...current,
+        status: "pairing_required",
+        pairingCode: pairing[1].toUpperCase(),
+        message: "Tarjeta nueva. Usa este código para asociarla durante los próximos 3 minutos.",
+        readAt: current.readAt ?? readAt,
+      }));
+      return;
+    }
+    const card = line.match(/^TARJETA:\s*(.+)$/i);
+    if (card) {
+      const printed = card[1].trim();
+      setNfcReading((current) => ({
+        ...current,
+        maskedCard: printed === "sin numero impreso" ? undefined : maskIdentifier(printed),
+        readAt: current.readAt ?? readAt,
+      }));
+      return;
+    }
+    const balance = line.match(/^SALDO DISPONIBLE OGPASS:\s*(-?\d+)\s+CLP$/i);
+    if (balance) {
+      setNfcReading((current) => ({
+        ...current,
+        status: "balance",
+        balance: Number(balance[1]),
+        message: "Lectura confirmada por el ledger OGPASS. Consulta sin cobro.",
+        readAt: current.readAt ?? readAt,
+      }));
+      return;
+    }
+    if (/^TARJETA DESACTIVADA/i.test(line)) {
+      setNfcReading((current) => ({
+        ...current,
+        status: "disabled",
+        message: "La tarjeta está desactivada y no puede consultarse.",
+        readAt: current.readAt ?? readAt,
+      }));
+      return;
+    }
+    const offline = line.match(
+      /^(?:SIN CONFIRMACION HTTP|Lector sin conexion verificada):?\s*(-?\d+)?/i,
+    );
+    if (offline) {
+      setNfcReading((current) => ({
+        ...current,
+        status: "offline",
+        message: `La tarjeta fue detectada, pero la API no confirmó la lectura${offline[1] ? ` (HTTP ${offline[1]})` : ""}.`,
+        readAt: current.readAt ?? readAt,
+      }));
+    }
+  }
+
+  async function startNfcMonitor(port: SerialPortLike) {
+    await stopNfcMonitor();
+    const reader = port.readable?.getReader();
+    if (!reader) throw new Error("El puerto no permite escuchar lecturas NFC.");
+    const generation = monitorGenerationRef.current;
+    serialReaderRef.current = reader;
+    setMonitoringNfc(true);
+    setNfcReading({ status: "idle", message: "Acerca una tarjeta al lector PN532." });
+    let buffer = "";
+    void (async () => {
+      try {
+        while (monitorGenerationRef.current === generation) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          buffer += new TextDecoder().decode(value, { stream: true });
+          const lines = buffer.split(/\r?\n/);
+          buffer = lines.pop() ?? "";
+          for (const line of lines) handleNfcLine(line.trim());
+        }
+      } catch (caught) {
+        if (monitorGenerationRef.current === generation) {
+          setNfcReading({
+            status: "error",
+            message: caught instanceof Error ? caught.message : "Se interrumpió la lectura NFC.",
+          });
+        }
+      } finally {
+        if (serialReaderRef.current === reader) serialReaderRef.current = null;
+        reader.releaseLock();
+        if (monitorGenerationRef.current === generation) setMonitoringNfc(false);
+      }
+    })();
+  }
+
   async function disconnectHardware() {
+    await stopNfcMonitor();
     const port = portRef.current;
     portRef.current = null;
     if (port) await port.close().catch(() => undefined);
     setPortConnected(false);
     setDiagnostic(null);
+    setNfcReading({ status: "idle", message: "Conecta y verifica el lector para comenzar." });
     setHardwareError("");
     setHardwareState("idle");
   }
 
-  async function verifyHardware() {
+  async function verifyHardware(forcePortSelection = false) {
     const serial = serialAccess();
     if (!serial) {
       setHardwareState("unsupported");
@@ -970,17 +1148,26 @@ function DeveloperView({ onBack }: { onBack: () => void }) {
     setHardwareError("");
     setDiagnostic(null);
     try {
+      await stopNfcMonitor();
       let port = portRef.current;
+      if (forcePortSelection && port) {
+        portRef.current = null;
+        await port.close().catch(() => undefined);
+        port = null;
+        setPortConnected(false);
+      }
       if (!port) {
-        const approved = await serial.getPorts();
-        port = approved.find((candidate) => {
-          const info = candidate.getInfo?.() ?? {};
-          return (
-            (info.usbVendorId === 0x10c4 && info.usbProductId === 0xea60) ||
-            info.usbVendorId === 0x1a86 ||
-            info.usbVendorId === 0x303a
-          );
-        });
+        if (!forcePortSelection) {
+          const approved = await serial.getPorts();
+          port = approved.find((candidate) => {
+            const info = candidate.getInfo?.() ?? {};
+            return (
+              (info.usbVendorId === 0x10c4 && info.usbProductId === 0xea60) ||
+              info.usbVendorId === 0x1a86 ||
+              info.usbVendorId === 0x303a
+            );
+          });
+        }
         if (!port) {
           setHardwareState("requesting");
           port = await serial.requestPort({
@@ -1064,9 +1251,23 @@ function DeveloperView({ onBack }: { onBack: () => void }) {
       }
       if (!payload) throw new Error("El CP2102 abrió correctamente, pero el ESP32 no envió datos.");
       setDiagnostic(payload);
-      if (!payload.reader_ready) setHardwareState("reader_missing");
-      else if (!payload.wifi_connected || !payload.backend_online) setHardwareState("partial");
+      if (!payload.reader_ready) {
+        setHardwareError(
+          "El ESP32 y el puerto USB responden, pero no se detectó el PN532 en la dirección I²C 0x24 (SDA GPIO21 / SCL GPIO22).",
+        );
+        setHardwareState("reader_missing");
+      } else if (!payload.wifi_connected || !payload.backend_online) setHardwareState("partial");
       else setHardwareState("ready");
+      if (payload.reader_ready) {
+        const writer = port.writable?.getWriter();
+        if (!writer) throw new Error("El puerto no permite activar el modo de consulta NFC.");
+        try {
+          await writer.write(new TextEncoder().encode("SALDO\n"));
+        } finally {
+          writer.releaseLock();
+        }
+        await startNfcMonitor(port);
+      }
     } catch (caught) {
       if (caught instanceof DOMException && caught.name === "NotFoundError") {
         setHardwareState("idle");
@@ -1077,6 +1278,7 @@ function DeveloperView({ onBack }: { onBack: () => void }) {
       portRef.current = null;
       if (port) await port.close().catch(() => undefined);
       setPortConnected(false);
+      setMonitoringNfc(false);
       setHardwareState("error");
       setHardwareError(
         caught instanceof Error ? caught.message : "No fue posible verificar el lector.",
@@ -1246,6 +1448,14 @@ function DeveloperView({ onBack }: { onBack: () => void }) {
                   ? "Verificar nuevamente"
                   : "Conectar y verificar"}
           </Button>
+          <Button
+            className="mt-2 w-full"
+            variant="outline"
+            onClick={() => void verifyHardware(true)}
+            disabled={hardwareState === "requesting" || hardwareState === "checking"}
+          >
+            Elegir otro puerto USB
+          </Button>
           {portRef.current && (
             <Button
               className="mt-2 w-full"
@@ -1330,11 +1540,81 @@ function DeveloperView({ onBack }: { onBack: () => void }) {
           </div>
           <div className="mt-5 flex items-start gap-3 text-xs leading-5 text-muted-foreground">
             <ShieldCheck className="mt-0.5 size-4 shrink-0 text-primary" />
-            Esta prueba sólo solicita estado al equipo seleccionado. No lee, escribe ni modifica una
-            tarjeta NFC.
+            El navegador escucha lecturas ISO14443A en modo saldo. No escribe ni modifica la
+            tarjeta, no habilita pagos y nunca muestra el UID completo.
           </div>
         </section>
       </div>
+
+      <section className="mt-5 rounded-lg border border-border bg-card p-6 shadow-[var(--shadow-card)]">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-bold uppercase text-muted-foreground">Lectura NFC en vivo</p>
+            <h2 className="mt-1 font-display text-xl font-bold">Tarjeta detectada</h2>
+          </div>
+          <span
+            className={cn(
+              "rounded-full px-3 py-1 font-mono text-xs font-semibold",
+              monitoringNfc ? "bg-success/10 text-success" : "bg-secondary text-muted-foreground",
+            )}
+          >
+            {monitoringNfc ? "ESCUCHANDO" : "DETENIDO"}
+          </span>
+        </div>
+        <div
+          className={cn(
+            "mt-5 grid gap-4 rounded-md border p-5 sm:grid-cols-2 lg:grid-cols-4",
+            nfcReading.status === "balance"
+              ? "border-success/30 bg-success/5"
+              : nfcReading.status === "offline" || nfcReading.status === "error"
+                ? "border-danger/30 bg-danger/5"
+                : "border-border bg-secondary/30",
+          )}
+          role="status"
+          aria-live="polite"
+        >
+          <div>
+            <p className="text-[11px] text-muted-foreground">UID protegido</p>
+            <p className="mt-1 font-mono text-sm font-semibold">{nfcReading.maskedUid ?? "—"}</p>
+          </div>
+          <div>
+            <p className="text-[11px] text-muted-foreground">Tarjeta OGPASS</p>
+            <p className="mt-1 font-mono text-sm font-semibold">{nfcReading.maskedCard ?? "—"}</p>
+          </div>
+          <div>
+            <p className="text-[11px] text-muted-foreground">Saldo</p>
+            <p className="mt-1 font-mono text-sm font-semibold">
+              {nfcReading.balance === undefined
+                ? "—"
+                : new Intl.NumberFormat("es-CL", {
+                    style: "currency",
+                    currency: "CLP",
+                    maximumFractionDigits: 0,
+                  }).format(nfcReading.balance)}
+            </p>
+          </div>
+          <div>
+            <p className="text-[11px] text-muted-foreground">Leída</p>
+            <p className="mt-1 font-mono text-sm font-semibold">
+              {nfcReading.readAt
+                ? new Intl.DateTimeFormat("es-CL", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    second: "2-digit",
+                  }).format(new Date(nfcReading.readAt))
+                : "—"}
+            </p>
+          </div>
+          <div className="sm:col-span-2 lg:col-span-4">
+            <p className="text-sm text-muted-foreground">{nfcReading.message}</p>
+            {nfcReading.pairingCode && (
+              <p className="mt-3 font-mono text-lg font-bold tracking-[0.2em] text-primary">
+                {nfcReading.pairingCode}
+              </p>
+            )}
+          </div>
+        </div>
+      </section>
 
       <div className="mt-5 grid gap-3 sm:grid-cols-3">
         {[

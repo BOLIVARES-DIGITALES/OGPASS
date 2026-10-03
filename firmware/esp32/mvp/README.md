@@ -133,6 +133,8 @@ python3 scripts/validate_config.py
 
 PN532 en modo I2C: SDA GPIO21, SCL GPIO22, GND común, alimentación conforme al módulo y lógica de 3,3 V compatible con ESP32. Firmware sincroniza NTP antes de TLS; el certificado CA debe validar la cadena actual del dominio. No usa `setInsecure`. Sin `ogpass_config.h` compila con conexión deshabilitada.
 
+Para distinguir un fallo físico de un fallo de inicialización, el firmware escanea el bus al arrancar y admite el comando serie `I2CSCAN` a 115200 baudios. Un PN532 en modo I2C debe aparecer como `OGPASS_I2C_DEVICE 0x24`; si el resumen informa `devices=0`, ningún dispositivo está respondiendo en GPIO21/GPIO22 y la causa precede a la API y a la interfaz web.
+
 `platformio.ini` ejecuta `scripts/validate_config.py` antes de cada build o carga. Mientras exista un marcador `TU_...`, falte el token provisionado, la URL no sea HTTPS o la CA raíz siga pendiente, PlatformIO se detiene sin mostrar secretos ni modificar el dispositivo.
 
 La vista «Soy desarrollador» puede verificar el lector por Web Serial desde Chrome o Edge en HTTPS o localhost. El usuario debe seleccionar el puerto USB explícitamente. La web envía `STATUS` a 115200 baudios y sólo marca el equipo listo después de recibir una línea `OGPASS_STATUS` válida que confirme ESP32, PN532, Wi-Fi y heartbeat reciente con la API. Esta verificación no lee ni modifica una tarjeta.

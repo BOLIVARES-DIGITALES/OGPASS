@@ -3,8 +3,9 @@
 #define OGPASS_WIFI_PASSWORD "TU_PASSWORD_WIFI"
 #define OGPASS_API_BASE "https://TU_DOMINIO_OGPASS"
 #define OGPASS_READER_TOKEN "TU_TOKEN_PRIVADO_DEL_LECTOR"
+#define OGPASS_ALLOW_PAYMENTS 0
 // Copia la CA raíz PEM que valida el dominio. No uses setInsecure.
-#define OGPASS_ROOT_CA R"PEM(-----BEGIN CERTIFICATE-----
+static const char OGPASS_ROOT_CA[] = R"PEM(-----BEGIN CERTIFICATE-----
 REEMPLAZAR_POR_CA_RAIZ_PEM
 -----END CERTIFICATE-----
-)PEM"
+)PEM";

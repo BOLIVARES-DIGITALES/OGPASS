@@ -31,7 +31,7 @@ El repositorio ya quedó alineado en `front_ogpass-sdk-hub/supabase/config.toml`
    - Database: normalmente `postgres`.
    - User: normalmente `postgres.ynisiarxjpgdxapmoppp`.
    - Password: la contraseña de base de datos elegida al crear el proyecto.
-5. Si no se recuerda la contraseña: menú izquierdo **Database → Settings → Database password → Reset**. Después del cambio, actualizar inmediatamente cualquier servicio conectado.
+5. Si no se recuerda la contraseña: menú izquierdo **Database → Settings → Database password → Reset**. Después del caXmbio, actualizar inmediatamente cualquier servicio conectado.
 
 No usar aquí Project URL, publishable key, `anon`, secret key ni `service_role`: ninguna de ellas es una contraseña PostgreSQL.
 
