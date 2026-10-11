@@ -1,0 +1,190 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "00 OGPASS INICIAR — Backend + Frontend + Validator + Estado",
+      "dependsOrder": "parallel",
+      "dependsOn": [
+        "01 OGPASS BACKEND",
+        "02 OGPASS FRONTEND",
+        "03 OGPASS VALIDATOR",
+        "05 OGPASS ESTADO"
+      ],
+      "problemMatcher": [],
+      "runOptions": {
+        "instanceLimit": 1
+      }
+    },
+    {
+      "label": "01 OGPASS BACKEND",
+      "detail": "Django ASGI :8000, logs HTTP y SQLite de desarrollo aislada.",
+      "type": "process",
+      "command": "bash",
+      "args": [
+        "${workspaceFolder}/firmware/esp32/scripts/dev-terminals.sh",
+        "backend"
+      ],
+      "problemMatcher": [],
+      "runOptions": {
+        "instanceLimit": 1
+      },
+      "presentation": {
+        "reveal": "always",
+        "focus": false,
+        "panel": "dedicated",
+        "group": "ogpass-dev",
+        "showReuseMessage": false,
+        "clear": false,
+        "close": false
+      }
+    },
+    {
+      "label": "02 OGPASS FRONTEND",
+      "detail": "Interfaz cliente :3000 con proxy a Django.",
+      "type": "process",
+      "command": "bash",
+      "args": [
+        "${workspaceFolder}/firmware/esp32/scripts/dev-terminals.sh",
+        "frontend"
+      ],
+      "problemMatcher": [],
+      "runOptions": {
+        "instanceLimit": 1
+      },
+      "presentation": {
+        "reveal": "always",
+        "focus": false,
+        "panel": "dedicated",
+        "group": "ogpass-dev",
+        "showReuseMessage": false,
+        "clear": false,
+        "close": false
+      }
+    },
+    {
+      "label": "03 OGPASS VALIDATOR",
+      "detail": "Monitor serie NFC: STATUS, I2CSCAN y SALDO. Cerrar Web Serial y FLASH antes.",
+      "type": "process",
+      "command": "bash",
+      "args": [
+        "${workspaceFolder}/firmware/esp32/scripts/dev-terminals.sh",
+        "validator",
+        "${input:ogpassSerialPort}"
+      ],
+      "problemMatcher": [],
+      "runOptions": {
+        "instanceLimit": 1
+      },
+      "presentation": {
+        "reveal": "always",
+        "focus": false,
+        "panel": "dedicated",
+        "group": "ogpass-dev",
+        "showReuseMessage": false,
+        "clear": false,
+        "close": false
+      }
+    },
+    {
+      "label": "04 OGPASS FLASH",
+      "detail": "Compila y carga ESP32. Detener VALIDATOR y Web Serial antes; no se ejecuta con 00.",
+      "type": "process",
+      "command": "bash",
+      "args": [
+        "${workspaceFolder}/firmware/esp32/scripts/dev-terminals.sh",
+        "flash",
+        "${input:ogpassSerialPort}"
+      ],
+      "problemMatcher": [],
+      "runOptions": {
+        "instanceLimit": 1
+      },
+      "presentation": {
+        "reveal": "always",
+        "focus": false,
+        "panel": "dedicated",
+        "group": "ogpass-dev",
+        "showReuseMessage": false,
+        "clear": false,
+        "close": false
+      }
+    },
+    {
+      "label": "05 OGPASS ESTADO",
+      "detail": "Consulta /health/ cada 2 segundos; no demuestra conexión física del lector.",
+      "type": "process",
+      "command": "bash",
+      "args": [
+        "${workspaceFolder}/firmware/esp32/scripts/dev-terminals.sh",
+        "health"
+      ],
+      "problemMatcher": [],
+      "runOptions": {
+        "instanceLimit": 1
+      },
+      "presentation": {
+        "reveal": "always",
+        "focus": false,
+        "panel": "dedicated",
+        "group": "ogpass-dev",
+        "showReuseMessage": false,
+        "clear": false,
+        "close": false
+      }
+    },
+    {
+      "label": "06 OGPASS PUERTOS",
+      "detail": "Lista dispositivos serie y puertos disponibles.",
+      "type": "process",
+      "command": "bash",
+      "args": [
+        "${workspaceFolder}/firmware/esp32/scripts/dev-terminals.sh",
+        "ports"
+      ],
+      "problemMatcher": [],
+      "runOptions": {
+        "instanceLimit": 1
+      },
+      "presentation": {
+        "reveal": "always",
+        "focus": false,
+        "panel": "dedicated",
+        "group": "ogpass-dev",
+        "showReuseMessage": false,
+        "clear": false,
+        "close": false
+      }
+    },
+    {
+      "label": "07 OGPASS ADMIN",
+      "detail": "Crea un administrador en la misma base local usada por 01.",
+      "type": "process",
+      "command": "bash",
+      "args": [
+        "${workspaceFolder}/firmware/esp32/scripts/dev-terminals.sh",
+        "admin"
+      ],
+      "problemMatcher": [],
+      "runOptions": {
+        "instanceLimit": 1
+      },
+      "presentation": {
+        "reveal": "always",
+        "focus": false,
+        "panel": "dedicated",
+        "group": "ogpass-dev",
+        "showReuseMessage": false,
+        "clear": false,
+        "close": false
+      }
+    }
+  ],
+  "inputs": [
+    {
+      "id": "ogpassSerialPort",
+      "type": "promptString",
+      "description": "Puerto USB del ESP32 (consultar 06 OGPASS PUERTOS)",
+      "default": "/dev/ttyUSB0"
+    }
+  ]
+}

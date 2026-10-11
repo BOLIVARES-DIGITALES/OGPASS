@@ -37,6 +37,51 @@ El UID puede clonarse: se usa como referencia, y **cada débito requiere la sesi
 
 ## Desarrollo local
 
+### Terminales numeradas en VS Code
+
+Abrir la carpeta raíz `OGPASS` en VS Code para cargar su `.vscode/tasks.json`.
+Desde **Terminal → Ejecutar tarea**, seleccionar
+**00 OGPASS INICIAR — Backend + Frontend + Validator + Estado**.
+Solicita el puerto USB (por defecto `/dev/ttyUSB0`) y abre terminales dedicadas,
+agrupadas en paneles divididos. También puede iniciarse cada tarea por separado:
+
+| Tarea / terminal | Qué muestra o ejecuta |
+|---|---|
+| 01 OGPASS BACKEND | Django/Uvicorn en puerto 8000, solicitudes y errores. |
+| 02 OGPASS FRONTEND | Interfaz cliente en puerto 3000 y mensajes de Vite. |
+| 03 OGPASS VALIDATOR | Lecturas NFC y respuestas serie a `STATUS`, `I2CSCAN` y `SALDO`. |
+| 04 OGPASS FLASH | Compilación y carga del firmware; ejecución independiente. |
+| 05 OGPASS ESTADO | Respuesta de `/health/` cada dos segundos; no certifica hardware. |
+| 06 OGPASS PUERTOS | Dispositivos serie disponibles. |
+| 07 OGPASS ADMIN | Alta interactiva de administrador local. |
+
+El lanzador `../scripts/dev-terminals.sh` usa `mvp/.venv/bin/python` y
+PlatformIO de `OGPASS/.venv/bin/pio`, con alternativa `pio` en PATH. Para el
+frontend requiere Node/npm en PATH y dependencias instaladas con `npm install`
+desde `OGPASS/front_ogpass-sdk-hub`. Si faltan requisitos, la terminal indica
+el bloqueo y conserva el mensaje; estas tareas no instalan dependencias.
+
+BACKEND aplica migraciones en `mvp/db.nfc-dev.sqlite3`, separada de la base
+habitual; ADMIN usa esa misma base. No cargan `.env`, ignoran `POSTGRES_HOST`
+heredado y deshabilitan credenciales de pagos y Movired en esos procesos.
+No crean fondos, usuarios ni tokens de lector automáticamente. La primera
+ejecución crea una base sin cuentas: usar ADMIN para el administrador y
+`http://localhost:8000/register/` para el usuario. El frontend abre en
+`http://localhost:3000/`; la cuenta del MVP y `/ops/` están en
+`http://localhost:8000/`. Usar perfiles de navegador separados para titular y
+administrador. El backend confía en el origen `http://localhost:3000` para CSRF.
+
+La lectura física necesita un endpoint HTTPS con CA válida que llegue al mismo
+backend, y un token provisionado en esa base; iniciar estas tareas no configura
+HTTPS ni provisiona el lector. Si el firmware apunta a otra instalación, sus
+lecturas no aparecerán en la base local. PostgreSQL sigue siendo necesario para
+verificar concurrencia y las protecciones contables específicas de la DB.
+
+Detener VALIDATOR con `Ctrl+C` y desconectar Web Serial antes de ejecutar FLASH.
+Terminar FLASH antes de volver a iniciar VALIDATOR. La tarea 00 no carga firmware.
+Para detener tareas usar `Ctrl+C` en su terminal o **Terminal → Finalizar tarea**.
+Las tareas crean sus propias terminales; no renombran terminales abiertas a mano.
+
 ```bash
 cd /home/uniquedev/Escritorio/OGPASS/firmware/esp32/mvp
 python3 -m venv .venv
