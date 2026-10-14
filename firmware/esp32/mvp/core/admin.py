@@ -36,3 +36,6 @@ class TagAdmin(admin.ModelAdmin):
         from .realtime import emit_event
         emit_event(obj.wallet_id,'tag_updated')
 admin.site.site_header = 'OGPASS · Administración'
+
+# Domain admin is registered through the existing core app, preserving app labels.
+from backend.apps.tag_portal import admin as tag_portal_admin

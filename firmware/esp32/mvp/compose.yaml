@@ -17,9 +17,14 @@ services:
       retries: 12
   migrate:
     build: .
-    profiles: [tools]
     env_file: .env
     environment:
+      DEBUG: '0'
+      OGPASS_ENV: production
+      POSTGRES_HOST: db
+      POSTGRES_PORT: '5432'
+      POSTGRES_DB: ${POSTGRES_DB:?required}
+      POSTGRES_SSLMODE: disable
       POSTGRES_USER: ogpass_owner
       POSTGRES_PASSWORD: ${POSTGRES_ADMIN_PASSWORD:?required}
     depends_on:
@@ -31,19 +36,25 @@ services:
     restart: unless-stopped
     environment:
       DEBUG: '0'
+      OGPASS_ENV: production
+      OGPASS_MODE: ${OGPASS_MODE:-product}
       SECRET_KEY: ${SECRET_KEY:?required}
       ALLOWED_HOSTS: ${ALLOWED_HOSTS:?required}
       PUBLIC_URL: ${PUBLIC_URL:?required}
       POSTGRES_HOST: db
-      POSTGRES_DB: ogpass
+      POSTGRES_DB: ${POSTGRES_DB:?required}
       POSTGRES_USER: ogpass
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?required}
+      CREDENTIAL_ENCRYPTION_KEY: ${CREDENTIAL_ENCRYPTION_KEY:?required}
+      CREDENTIAL_HMAC_KEY: ${CREDENTIAL_HMAC_KEY:?required}
       MP_ACCESS_TOKEN: ${MP_ACCESS_TOKEN:-}
       MP_WEBHOOK_SECRET: ${MP_WEBHOOK_SECRET:-}
       MP_COLLECTOR_ID: ${MP_COLLECTOR_ID:-}
     depends_on:
       db:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     expose: ['8000']
     healthcheck:
       test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen(urllib.request.Request('http://127.0.0.1:8000/health/', headers={'X-Forwarded-Proto':'https'}),timeout=5)"]

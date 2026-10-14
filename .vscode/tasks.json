@@ -40,7 +40,7 @@
     },
     {
       "label": "02 OGPASS FRONTEND",
-      "detail": "Interfaz cliente :3000 con proxy a Django.",
+      "detail": "Abre la interfaz única del MVP en :8000; requiere BACKEND activo.",
       "type": "process",
       "command": "bash",
       "args": [

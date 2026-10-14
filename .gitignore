@@ -18,3 +18,11 @@ logs/
 *.key
 *.pem
 sandbox/data/*.json
+**/node_modules/
+**/.pytest_cache/
+**/.ruff_cache/
+**/coverage/
+**/test-results/
+**/*.elf
+**/*.bin
+**/*.map

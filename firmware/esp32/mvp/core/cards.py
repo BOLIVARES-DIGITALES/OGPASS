@@ -87,6 +87,10 @@ def associate_scan(wallet, number, code, replace_tag_id=None):
     scan.wallet,scan.paired_at = wallet,timezone.now()
     scan.save(update_fields=['wallet','paired_at'])
     Audit.objects.create(actor=str(wallet.user_id),event='card_paired',reference=str(scan.key),details={'tag':tag.pk,'card_number':number})
+    from backend.apps.credentials.services import sync_tag
+    sync_tag(tag)
+    if previous:
+        sync_tag(previous)
     emit_event(wallet.pk,'card_paired')
     return tag
 

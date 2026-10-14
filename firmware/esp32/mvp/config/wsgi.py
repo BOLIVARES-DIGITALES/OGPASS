@@ -1,4 +1,2 @@
-import os
-os.environ.setdefault('DJANGO_SETTINGS_MODULE','config.settings')
-from django.core.wsgi import get_wsgi_application
-application = get_wsgi_application()
+"""Compatibility entry point; implementation lives in backend.config."""
+from backend.config.wsgi import *  # noqa: F401,F403

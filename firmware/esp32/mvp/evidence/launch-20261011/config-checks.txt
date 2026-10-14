@@ -1,0 +1,7 @@
+System check identified no issues (0 silenced).
+No changes detected
+collectstatic: current frontend assets present in isolated directory
+Docker executable: unavailable; image and Compose runtime not verified
+Shell syntax and git diff --check: PASS
+Parameterized PostgreSQL database GRANT: PASS, rolled back in temporary cluster
+Temporary PostgreSQL cluster: stopped after verification

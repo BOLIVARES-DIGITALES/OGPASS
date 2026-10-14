@@ -28,7 +28,11 @@ def emit_event(wallet_id, kind):
 
 def latest(wallet_id):
     events = WalletEvent.objects.filter(wallet_id=wallet_id) if wallet_id else WalletEvent.objects.all()
-    return events.order_by('-id').values_list('id',flat=True).first() or 0
+    version = events.order_by('-id').values_list('id',flat=True).first() or 0
+    if not wallet_id:
+        from backend.apps.devices.models import HardwareEvent
+        version += HardwareEvent.objects.count()
+    return version
 
 
 def frame(version):

@@ -1,0 +1,35 @@
+OGPASS — LABORATORIO DE PROTOTIPOS
+Fecha: 2026-10-11
+Estado: ITERATE. Ninguna ficha implica soporte comercial ni prueba física realizada.
+
+Objetivo
+Transportar una referencia interoperable de perfil, nunca secretos de wallet.
+
+Hardware
+Tag propio o emulación autorizada; confirmar tipo y memoria antes de implementar escritura.
+
+Protocolo
+Payload versionado: PUBLIC_ID, CREDENTIAL_ID, WALLET_REFERENCE, TOKEN_REFERENCE y SIGNED_PAYLOAD. PRIVATE_ID solo en backend.
+
+Mini driver
+identity/tag_payload.py emite/verifica referencias firmadas con caducidad. Drivers físicos write/emulate siguen UNSUPPORTED.
+
+Capacidades
+Validación lógica de firma/expiración/revocación; no grabación de tag ni emisión de activos financieros.
+
+Arquitectura
+TOKEN_ID es referencia opaca, no token blockchain. Firma de referencia no concede acceso a perfil privado ni débito.
+
+Pruebas
+Tampering, expiración, credencial desactivada, usuario ajeno, tamaño del payload y compatibilidad física futura.
+
+Resultados
+Unitarias de firma disponibles. Grabación y lectura física del payload pendientes.
+
+Riesgos
+Payload copiable y referencias correlacionables. La sesión del titular sigue autorizando cada pago.
+
+Criterio de promoción
+Confirmar formato/memoria, estrategia de rotación y caducidad, lectura repetible y autorización antes de grabar.
+
+Decisión actual: ITERATE

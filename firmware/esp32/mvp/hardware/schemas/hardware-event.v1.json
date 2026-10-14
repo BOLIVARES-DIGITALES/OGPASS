@@ -1,0 +1,108 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ogpass:hardware-event:1",
+  "title": "OGPASS authenticated read-only hardware event",
+  "type": "object",
+  "required": [
+    "event_id",
+    "reader",
+    "technology",
+    "protocol",
+    "uid"
+  ],
+  "properties": {
+    "event_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "request_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "device_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "reader": {
+      "enum": [
+        "rc522",
+        "pn532",
+        "ble"
+      ]
+    },
+    "technology": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 24
+    },
+    "protocol": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 32
+    },
+    "uid": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100
+    },
+    "purpose": {
+      "const": "balance"
+    },
+    "timestamp": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date-time"
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "sak": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 255
+        },
+        "atqa": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 65535
+        },
+        "type": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "latency_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 60000
+        },
+        "rssi": {
+          "type": "integer",
+          "minimum": -127,
+          "maximum": 20
+        }
+      },
+      "additionalProperties": false
+    },
+    "capabilities": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "IDENTIFY",
+          "READ",
+          "WRITE",
+          "AUTH",
+          "EMULATE",
+          "NDEF",
+          "APDU",
+          "BEACON",
+          "PROXIMITY",
+          "HEALTH"
+        ]
+      },
+      "uniqueItems": true
+    }
+  },
+  "additionalProperties": false
+}

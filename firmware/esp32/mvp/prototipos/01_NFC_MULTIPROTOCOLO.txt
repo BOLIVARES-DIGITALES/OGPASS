@@ -1,0 +1,35 @@
+OGPASS — LABORATORIO DE PROTOTIPOS
+Fecha: 2026-10-11
+Estado: ITERATE. Ninguna ficha implica soporte comercial ni prueba física realizada.
+
+Objetivo
+Ampliar detección NFC/RFID sin cambiar Identity Core.
+
+Hardware
+RC522 SPI principal; PN532 I2C opcional. ISO15693/LF requieren evaluar hardware específico.
+
+Protocolo
+Activo: ISO14443A identificación UID. Investigación: B, 4, ISO15693, NFC Forum, MIFARE, NTAG, DESFire, FeliCa, LF 125/134 kHz.
+
+Mini driver
+Rc522Reader en hardware/drivers/rc522; Pn532Diagnostic separado. Implementar un nuevo adaptador por protocolo.
+
+Capacidades
+RC522: IDENTIFY, READ de UID/SAK/ATQA, HEALTH. No memoria, escritura ni autenticación habilitadas.
+
+Arquitectura
+PRIMARY primero; OPTIONAL en tarea independiente. Evento autenticado pasa por normalizador con namespace.
+
+Pruebas
+UID 4/7/10 bytes, colisión, tag retenido, retirar/repetir, PN532 ausente/fallo, reinicio, más de 1000 toques y tarjetas propias variadas.
+
+Resultados
+Compilación y tests nativos se registran en evidencia; compatibilidad y lectura física pendientes.
+
+Riesgos
+UID clonable; reconocimiento no autoriza gasto. Un lector no detecta señales fuera de sus capacidades de radio.
+
+Criterio de promoción
+PROMOTE solo tras banco repetible, matriz de tags y versiones, sin regresiones RC522 y sin cobros al consultar.
+
+Decisión actual: ITERATE

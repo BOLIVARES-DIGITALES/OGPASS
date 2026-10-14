@@ -1,0 +1,44 @@
+{% load static %}<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow"><title>OGPASS · Tu llavero</title>
+<link rel="stylesheet" href="{% static 'css/tag-portal.css' %}"></head>
+<body class="theme-{{ portal.theme|default:'light' }}"><main class="portal" data-state="{{ portal.state }}">
+  <a class="brand" href="/">OGPASS <span>●</span></a>
+  {% for message in messages %}<p class="notice" role="status">{{ message }}</p>{% endfor %}
+  {% if portal.state == 'unavailable' %}
+    <p class="eyebrow">ACCESO NO DISPONIBLE</p><h1>Este enlace no está disponible.</h1>
+    <p>Ingresa a tu cuenta para revisar tus llaveros.</p><a class="button" href="/login/">Ingresar a OGPASS</a>
+  {% else %}
+    <p class="eyebrow">TU CONEXIÓN FÍSICA Y DIGITAL</p>
+    <h1>{{ portal.title }}</h1><p>{{ portal.message }}</p>
+    {% if portal.state == 'owner' %}
+      <section class="panel"><span class="badge">Tu cuenta está reconocida</span>
+        <h2>Hola, {{ portal.owner.display_name }}</h2>
+        <p>Gestiona tus fondos, movimientos y credenciales desde tu cuenta.</p>
+        <a class="button" href="/">Abrir mi cuenta</a>
+        <a class="button secondary" href="/my/tags/">Gestionar mis llaveros</a>
+      </section>
+      <details class="panel"><summary>Seguridad del llavero</summary><p>Bloquearlo desactiva su acceso web y su uso en lectores OGPASS. Tus fondos se conservan. La reactivación requiere soporte autorizado.</p>
+        <form action="{{ portal.path }}block/" method="post">{% csrf_token %}
+          <label><input type="checkbox" name="confirm" value="block" required> Confirmo que quiero bloquear este llavero.</label>
+          <button class="danger">Bloquear llavero</button>
+        </form>
+      </details>
+      <form action="/logout/" method="post">{% csrf_token %}<button class="text-button">Cerrar sesión en este navegador</button></form>
+    {% elif portal.can_activate %}
+      <section class="panel"><span class="badge">Listo para activar</span><h2>Activa tu acceso web</h2>
+        <p>Este llavero ya está asociado a tu cuenta. Activarlo facilita el acceso; no autoriza pagos.</p>
+        <form action="{{ portal.path }}activate/" method="post">{% csrf_token %}<button>Activar mi acceso</button></form>
+      </section>
+    {% else %}
+      <section class="panel"><h2>{% if portal.state == 'new' %}Comienza con tu llavero{% else %}Bienvenido a OGPASS{% endif %}</h2>
+        <p>Este enlace no muestra datos personales ni fondos de otra persona.</p>
+        <a class="button" href="{{ login_url }}">Ingresar como titular</a>
+        <a class="button secondary" href="/register/?next={{ portal.path|urlencode }}">Crear mi cuenta</a>
+        {% if portal.state == 'new' %}<p class="hint">La vinculación requiere tu cuenta y una lectura física verificada. Tener el enlace no asigna el llavero.</p>{% endif %}
+      </section>
+      {% if user.is_authenticated %}<p>Si usas otra cuenta, cierra esta sesión antes de ingresar como titular.</p><form action="/logout/" method="post">{% csrf_token %}<button class="text-button">Cerrar sesión</button></form>{% endif %}
+    {% endif %}
+  {% endif %}
+  <footer>Acercar o escanear un llavero no genera cargos.</footer>
+</main></body></html>

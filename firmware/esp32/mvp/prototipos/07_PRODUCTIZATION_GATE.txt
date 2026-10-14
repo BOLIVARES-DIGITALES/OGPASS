@@ -1,0 +1,35 @@
+OGPASS — LABORATORIO DE PROTOTIPOS
+Fecha: 2026-10-11
+Estado: ITERATE. Ninguna ficha implica soporte comercial ni prueba física realizada.
+
+Objetivo
+Definir la puerta de promoción de tecnología a producto físico.
+
+Hardware
+BOM versionada, disponibilidad de componentes, revisión PCB, carcasa y proceso de fabricación.
+
+Protocolo
+Contrato estable con versiones, compatibilidad declarada y estrategia de actualización/rollback.
+
+Mini driver
+Controlar ownership, timeouts, uso de memoria, errores, capabilities y ausencia de lógica de negocio en drivers.
+
+Capacidades
+Solo promover capacidades respaldadas por pruebas y documentación de límites.
+
+Arquitectura
+RESEARCH → PROTOTYPE → BENCH TEST → INTEGRATION → UX TEST → RELIABILITY → SECURITY REVIEW → RELEASE CANDIDATE → PRODUCTION.
+
+Pruebas
+Medir consumo, temperatura, latencia p50/p95, estabilidad prolongada, 1000 interacciones, 100 reinicios, fallos opcionales, múltiples nodos y UX 375/390/430/768/desktop.
+
+Resultados
+No hay promoción comercial automática. Los números anteriores son criterios propuestos, no mediciones realizadas.
+
+Riesgos
+Fallos contables, secretos en tags/logs, autorización por UID, dependencia experimental o evidencia no reproducible bloquean promoción.
+
+Criterio de promoción
+PROMOTE: responsable y fecha, evidencia vinculada, límites comerciales y soporte aprobados. ITERATE: pendientes verificables. REJECT: riesgos o costo incompatibles.
+
+Decisión actual: ITERATE

@@ -1,0 +1,38 @@
+INFO:     Started server process [24864]
+INFO:     Waiting for application startup.
+INFO:     ASGI 'lifespan' protocol appears unsupported.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:38775 (Press CTRL+C to quit)
+INFO:     127.0.0.1:45484 - "GET /health/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45494 - "GET /login/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45494 - "GET /static/app.css HTTP/1.1" 200 OK
+/home/uniquedev/Escritorio/OGPASS/firmware/esp32/mvp/.venv/lib/python3.12/site-packages/django/core/handlers/asgi.py:336: Warning: StreamingHttpResponse must consume synchronous iterators in order to serve them asynchronously. Use an asynchronous iterator instead.
+  async for part in content:
+INFO:     127.0.0.1:45502 - "GET /static/app.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45526 - "GET /static/components/launch.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45510 - "GET /static/css/launch.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45510 - "POST /login/ HTTP/1.1" 302 Found
+INFO:     127.0.0.1:45510 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45510 - "GET /static/app.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45502 - "GET /static/css/launch.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45526 - "GET /static/app.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45502 - "GET /static/components/launch.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45526 - "GET /api/v1/devices/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45510 - "GET /api/v1/events/recent/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45502 - "GET /api/state/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45494 - "GET /api/v1/credentials/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45510 - "GET /api/events/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45544 - "GET /static/app.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45526 - "GET /api/v1/events/recent/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45502 - "GET /api/v1/devices/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45548 - "GET /static/css/launch.css HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45562 - "GET /static/components/launch.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45534 - "GET /api/v1/credentials/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45494 - "GET /api/state/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45578 - "POST /api/v1/credentials/scan/ HTTP/1.1" 201 Created
+INFO:     127.0.0.1:45502 - "GET /api/v1/events/recent/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45534 - "GET /api/v1/devices/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45526 - "GET /api/v1/credentials/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45494 - "GET /api/state/ HTTP/1.1" 200 OK
+INFO:     Shutting down
+INFO:     Finished server process [24864]

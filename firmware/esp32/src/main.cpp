@@ -1,223 +1,160 @@
 #include <Arduino.h>
+#include <ArduinoJson.h>
+#include <SPI.h>
 #include <Wire.h>
+#include <MFRC522.h>
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
 #include <HTTPClient.h>
-#include <Adafruit_PN532.h>
-#include <ArduinoJson.h>
 #include <Preferences.h>
-#include <time.h>
-#if __has_include("ogpass_config.h")
+#include <atomic>
+#if defined(OGPASS_COMPILE_NETWORK_FIXTURE)
+#include "../mvp/hardware/tests/network_fixture.h"
+#elif __has_include("ogpass_config.h")
 #include "ogpass_config.h"
-#else
+#endif
+#if !defined(OGPASS_WIFI_SSID) || !defined(OGPASS_WIFI_PASSWORD) || !defined(OGPASS_API_BASE) || !defined(OGPASS_READER_TOKEN)
+#undef OGPASS_WIFI_SSID
+#undef OGPASS_WIFI_PASSWORD
+#undef OGPASS_API_BASE
+#undef OGPASS_READER_TOKEN
 #define OGPASS_WIFI_SSID ""
 #define OGPASS_WIFI_PASSWORD ""
 #define OGPASS_API_BASE ""
 #define OGPASS_READER_TOKEN ""
 #define OGPASS_ROOT_CA ""
 #endif
-#ifndef OGPASS_ALLOW_PAYMENTS
-#define OGPASS_ALLOW_PAYMENTS 0
+#ifndef OGPASS_DEVELOPER_MODE
+#define OGPASS_DEVELOPER_MODE 0
+#endif
+#ifndef OGPASS_ENABLE_PN532
+#define OGPASS_ENABLE_PN532 1
+#endif
+#ifndef OGPASS_ENABLE_BLE
+#define OGPASS_ENABLE_BLE 0
+#endif
+#include "../mvp/hardware/core/ReaderManager.h"
+#include "../mvp/hardware/core/HttpsEvents.h"
+#include "../mvp/hardware/drivers/rc522/Rc522Reader.h"
+#include "../mvp/hardware/drivers/pn532/Pn532Diagnostic.h"
+#if OGPASS_ENABLE_BLE
+#include <BLEDevice.h>
+#include <BLEAdvertising.h>
+#include "../mvp/hardware/drivers/ble/BleBeacon.h"
 #endif
 
-constexpr uint8_t PN532_IRQ_PIN = 27;
-constexpr uint8_t PN532_RESET_PIN = 26;
-constexpr uint8_t PN532_SDA_PIN = 21;
-constexpr uint8_t PN532_SCL_PIN = 22;
+using namespace ogpass;
+Rc522Reader primary;
+Pn532Diagnostic optional(OGPASS_ENABLE_PN532);
+#if OGPASS_ENABLE_BLE
+BleBeacon beacon;
+#endif
+ReaderManager readers;
+HttpsEvents transport;
+TaskHandle_t optionalTaskHandle=nullptr;
+std::atomic<bool> optionalStarted{false};
+QueueHandle_t optionalEvents=nullptr;
+String command;
 
-// The Adafruit I2C constructor requires valid IRQ/reset GPIO numbers even on
-// four-wire PN532 boards where those two signals are not connected. I2C
-// readiness is polled over Wire, so these pins remain available for an
-// optional future IRQ/reset connection without being required for reads.
-Adafruit_PN532 nfc(PN532_IRQ_PIN, PN532_RESET_PIN, &Wire);
-Preferences prefs;
-String pendingKey, pendingUid, heldUid, pendingPurpose="balance", serialCommand;
-bool paymentArmed=false;
-unsigned long paymentArmedAt=0;
-unsigned long lastWifi=0,lastHeartbeat=0,lastRequest=0,lastDetected=0;
-bool readerReady=false;
-bool backendOnline=false;
-int lastHeartbeatCode=0;
-unsigned long lastHeartbeatSuccess=0;
-
-bool scanI2cBus(){
-  constexpr uint8_t address=0x24;
-  Serial.println("OGPASS_I2C_SCAN_BEGIN");
-  Wire.beginTransmission(address);
-  uint8_t error=Wire.endTransmission();
-  bool pn532Found=error==0;
-  if(pn532Found){
-    Serial.printf("OGPASS_I2C_DEVICE 0x%02X\n",address);
-  }else{
-    Serial.printf("OGPASS_I2C_ERROR address=0x%02X code=%u\n",address,error);
-  }
-  Serial.printf("OGPASS_I2C_SCAN_END devices=%u pn532=%s\n",pn532Found?1:0,pn532Found?"detected":"not_detected");
-  return pn532Found;
+Health bleHealth() {
+#if OGPASS_ENABLE_BLE
+    return beacon.health();
+#else
+    return Health::Disabled;
+#endif
 }
 
-String uuid() {
-  uint8_t b[16]; esp_fill_random(b,16);
-  b[6]=(b[6]&0x0F)|0x40; b[8]=(b[8]&0x3F)|0x80;
-  char out[37];
-  snprintf(out,sizeof(out),"%02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x",b[0],b[1],b[2],b[3],b[4],b[5],b[6],b[7],b[8],b[9],b[10],b[11],b[12],b[13],b[14],b[15]);
-  return String(out);
+void optionalTask(void*) {
+    readers.beginOptional();optionalStarted=true;
+    for(;;) {
+        Detection event;
+        if(readers.pollOptional(event)) xQueueSend(optionalEvents,&event,0);
+        // Explicit re-probe stays on this task, never the primary loop.
+        if(ulTaskNotifyTake(pdTRUE,pdMS_TO_TICKS(100))>0) optional.reset();
+    }
 }
-String uidText(uint8_t* uid,uint8_t length) {
-  String result; for(uint8_t i=0;i<length;i++){if(uid[i]<16)result+="0";result+=String(uid[i],HEX);} result.toUpperCase(); return result;
+
+void networkTask(void*) {
+    transport.beginNetwork();
+    for(;;) {
+        transport.tick(primary.health(),optional.health(),bleHealth());
+        vTaskDelay(pdMS_TO_TICKS(20));
+    }
 }
-String uidMasked(const String& uid) {
-  if(uid.length()<=6)return uid.substring(0,2)+"••••";
-  return uid.substring(0,4)+"••••"+uid.substring(uid.length()-4);
+
+void status() {
+    JsonDocument value;
+    value["device"]="OGPASS-ESP32";value["protocol"]=2;
+    value["firmware_version"]="ogpass-core-0.1";
+    value["reader_ready"]=primary.health()==Health::CONNECTED;
+    value["wifi_connected"]=WiFi.status()==WL_CONNECTED;
+    value["backend_online"]=transport.online && millis()-transport.heartbeatAt.load()<45000;
+    value["heartbeat_code"]=transport.heartbeatCode.load();
+    value["configured"]=transport.configured();
+    value["readers"]["rc522"]=healthName(primary.health());
+    value["readers"]["pn532"]=healthName(optional.health());
+    value["readers"]["ble"]=healthName(bleHealth());
+    value["optional_started"]=optionalStarted.load();
+    value["mode"]=OGPASS_DEVELOPER_MODE?"developer":"product";
+    Serial.print("OGPASS_STATUS ");serializeJson(value,Serial);Serial.println();
 }
-void printNfcEvent(const String& state,const String& maskedUid=""){
-  JsonDocument event;
-  event["state"]=state;
-  if(!maskedUid.isEmpty())event["masked_uid"]=maskedUid;
-  Serial.print("OGPASS_NFC_EVENT ");
-  serializeJson(event,Serial);
-  Serial.println();
+
+void eventId(char* result) {
+    uint8_t b[16];esp_fill_random(b,16);b[6]=(b[6]&15)|64;b[8]=(b[8]&63)|128;
+    snprintf(result,37,"%02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x",b[0],b[1],b[2],b[3],b[4],b[5],b[6],b[7],b[8],b[9],b[10],b[11],b[12],b[13],b[14],b[15]);
 }
-int api(const String& path,const String& body,String& response,bool post=true) {
-  if(WiFi.status()!=WL_CONNECTED) return -1;
-  String base=OGPASS_API_BASE;
-  if(!base.startsWith("https://") || strlen(OGPASS_ROOT_CA)<100 || time(nullptr)<1700000000) return -2;
-  WiFiClientSecure client;client.setCACert(OGPASS_ROOT_CA);
-  HTTPClient http;http.setTimeout(5000);http.setConnectTimeout(5000);
-  if(!http.begin(client,base+path))return -3;
-  http.addHeader("Content-Type","application/json");
-  http.addHeader("Authorization",String("Bearer ")+OGPASS_READER_TOKEN);
-  int code=post?http.POST(body):http.GET();
-  if(code>0) response=http.getString();
-  http.end();return code;
+
+void setup() {
+    Serial.begin(115200);
+    readers.add(primary,Role::PRIMARY);readers.add(optional,Role::OPTIONAL);
+#if OGPASS_ENABLE_BLE
+    readers.add(beacon,Role::RADIO);
+#endif
+    // RC522 always starts first. Neither optional task is awaited.
+    readers.beginPrimary();
+    transport.beginQueue();optionalEvents=xQueueCreate(4,sizeof(Detection));
+    if(optionalEvents) {
+        if(xTaskCreatePinnedToCore(optionalTask,"ogpass-optional",8192,nullptr,1,&optionalTaskHandle,0)!=pdPASS)
+            Serial.println("OGPASS_OPTIONAL_TASK_ERROR primary_continues");
+    }
+    if(xTaskCreatePinnedToCore(networkTask,"ogpass-network",12288,nullptr,1,nullptr,0)!=pdPASS)
+        Serial.println("OGPASS_NETWORK_TASK_ERROR local_detection_only");
+    Serial.println("OGPASS: RC522 PRIMARY | PN532 OPTIONAL | consulta sin cobro");
+    Serial.println("Comandos: STATUS, I2CSCAN, SALDO. Escritura y pagos deshabilitados.");
+    status();
 }
-bool savePending(const String& key,const String& uid,const String& purpose){
-  // Single NVS value prevents torn key/UID pairs after power failure.
-  String record=key+"|"+uid+"|"+purpose;
-  prefs.putString("pending",record);
-  if(prefs.getString("pending","")!=record){Serial.println("ERROR NVS: operacion no enviada");return false;}
-  pendingKey=key;pendingUid=uid;pendingPurpose=purpose;return true;
-}
-void clearPending(){
-  prefs.remove("pending");
-  if(!prefs.getString("pending","").isEmpty()){Serial.println("ERROR NVS: conservando referencia para evitar duplicados");return;}
-  pendingKey="";pendingUid="";pendingPurpose="balance";
-}
-void printStatus(){
-  JsonDocument status;
-  status["device"]="OGPASS-ESP32-PN532";
-  status["protocol"]=1;
-  status["reader_ready"]=readerReady;
-  status["wifi_connected"]=WiFi.status()==WL_CONNECTED;
-  status["backend_online"]=backendOnline && millis()-lastHeartbeatSuccess<45000;
-  status["heartbeat_code"]=lastHeartbeatCode;
-  status["pending_operation"]=!pendingKey.isEmpty();
-  Serial.print("OGPASS_STATUS ");
-  serializeJson(status,Serial);
-  Serial.println();
-}
-void servicePending(){
-  if(pendingKey.isEmpty()||millis()-lastRequest<2500)return;
-  lastRequest=millis();
-  String response;
-  int code=api("/api/reader/scans/"+pendingKey+"/","",response,false);
-  if(code==404){
-    JsonDocument data; data["uid"]=pendingUid;data["key"]=pendingKey;data["purpose"]=pendingPurpose;
-    String body;serializeJson(data,body);code=api("/api/reader/scans/",body,response);
-  }
-  if(code!=200){Serial.printf("SIN CONFIRMACION HTTP %d; se conserva referencia para reintentar\n",code);return;}
-  JsonDocument data;
-  if(deserializeJson(data,response)){Serial.println("RESPUESTA INVALIDA; no aprobado");return;}
-  String state=data["status"]|"unknown";
-  if(state=="pairing_required"){
-    Serial.printf("CODIGO PARA ASOCIAR: %s (valido 3 minutos)\n",data["pairing_code"].as<const char*>());
-    Serial.println("Introduce el numero impreso y este codigo en Mi tarjeta. Luego retira y vuelve a escanear.");
-    clearPending();
-  }else if(state=="balance"||state=="frozen"){
-    Serial.printf("TARJETA: %s\n",data["card_number"]|"sin numero impreso");
-    Serial.printf("SALDO DISPONIBLE OGPASS: %lld CLP\n",data["available_balance"].as<long long>());
-    Serial.println("FUENTE: ledger OGPASS actualizado. CONSULTA SIN COBRO.");
-    if(state=="frozen")Serial.println("CUENTA EN REVISION: fondos no disponibles para operar");
-    clearPending();
-  }else if(state=="disabled"){
-    Serial.println("TARJETA DESACTIVADA: consulta no disponible");clearPending();
-  }else if(state=="pending"){
-    Serial.printf("CONFIRMA EN TU MOVIL: %ld CLP / %s\n",data["amount"].as<long>(),pendingKey.c_str());
-  }else if(state=="approved"||state=="declined"||state=="expired"||state=="reversed"){
-    Serial.printf("RESULTADO: %s / %s\n",state.c_str(),pendingKey.c_str());
-    if(state=="approved")Serial.println("VALIDACION REGISTRADA EN OGPASS");
-    clearPending();
-  }
-}
-void setup(){
-  Serial.begin(115200);delay(500);
-  Serial.println("OGPASS / ESP32 + PN532 / consulta de saldo OGPASS sin cobro");
-  Serial.println("Modo normal: SALDO. Para una operacion, enviar PAGAR y acercar tarjeta en 30 segundos.");
-  prefs.begin("ogpass",false);
-  String saved=prefs.getString("pending","");int split=saved.indexOf('|');
-  if(split>0){
-    pendingKey=saved.substring(0,split);
-    int modeSplit=saved.indexOf('|',split+1);
-    pendingUid=modeSplit<0?saved.substring(split+1):saved.substring(split+1,modeSplit);
-    // Records from the previous firmware represented payment requests.
-    pendingPurpose=modeSplit<0?"payment":saved.substring(modeSplit+1);
-    heldUid=pendingUid;
-  }
-  if(strlen(OGPASS_WIFI_SSID)==0){Serial.println("CONFIGURACION PENDIENTE: copiar src/ogpass_config.example.h a src/ogpass_config.h");}
-  WiFi.mode(WIFI_STA);WiFi.begin(OGPASS_WIFI_SSID,OGPASS_WIFI_PASSWORD);
-  configTime(0,0,"pool.ntp.org","time.nist.gov");
-  Wire.begin(PN532_SDA_PIN,PN532_SCL_PIN,100000);
-  // Keep discovery fast: a long timeout multiplied by 126 addresses can make
-  // startup appear frozen when the bus is busy or a cable is intermittent.
-  Wire.setTimeOut(50);
-  bool pn532Present=scanI2cBus();
-  // PN532 can hold SCL while preparing a response. Allow that only after the
-  // diagnostic scan, so normal NFC commands do not surface i2c Error 263.
-  Wire.setTimeOut(1000);
-  uint32_t version=0;
-  if(pn532Present){nfc.begin();version=nfc.getFirmwareVersion();}
-  readerReady=pn532Present&&version!=0;
-  if(readerReady){nfc.setPassiveActivationRetries(0x01);Serial.println("PN532 listo: ISO14443A UID. No se modifica la tarjeta.");}
-  else Serial.println("PN532 NO DETECTADO: revisar I2C, alimentacion y selector del modulo");
-}
-void loop(){
-  unsigned long now=millis();
-  while(Serial.available()){
-    char c=Serial.read();
-    if(c=='\n'||c=='\r'){
-      serialCommand.trim();serialCommand.toUpperCase();
-      if(serialCommand=="PAGAR"&&pendingKey.isEmpty()){
-        if(OGPASS_ALLOW_PAYMENTS){paymentArmed=true;paymentArmedAt=now;Serial.println("PROXIMA LECTURA: PAGO, requiere confirmacion movil. Caduca en 30 s.");}
-        else Serial.println("PAGOS DESHABILITADOS: este lector opera solo en modo consulta");
-      }
-      else if(serialCommand=="SALDO"){paymentArmed=false;Serial.println("PROXIMA LECTURA: CONSULTA SIN COBRO");}
-      else if(serialCommand=="I2CSCAN"){scanI2cBus();}
-      else if(serialCommand=="STATUS"){printStatus();}
-      serialCommand="";
-    }else if(serialCommand.length()<16){serialCommand+=c;}
-  }
-  if(paymentArmed&&now-paymentArmedAt>30000){paymentArmed=false;Serial.println("MODO PAGO EXPIRADO: vuelta a consulta de saldo");}
-  if(WiFi.status()!=WL_CONNECTED&&now-lastWifi>10000){lastWifi=now;WiFi.reconnect();}
-  if(readerReady&&now-lastHeartbeat>15000){
-    lastHeartbeat=now;String response;int code=api("/api/reader/heartbeat/","{}",response);
-    lastHeartbeatCode=code;
-    backendOnline=code==200;
-    if(backendOnline)lastHeartbeatSuccess=now;
-    else Serial.printf("Lector sin conexion verificada: %d\n",code);
-  }
-  servicePending();
-  if(!readerReady){delay(100);return;}
-  uint8_t uid[10],len=0;
-  bool detected=nfc.readPassiveTargetID(PN532_MIFARE_ISO14443A,uid,&len,100);
-  if(!detected){if(millis()-lastDetected>1500 && pendingKey.isEmpty())heldUid="";return;}
-  lastDetected=millis();
-  if(len!=4&&len!=7&&len!=10)return;
-  String current=uidText(uid,len);
-  if(current==heldUid||!pendingKey.isEmpty())return;
-  heldUid=current;
-  printNfcEvent("detected",uidMasked(current));
-  if(WiFi.status()!=WL_CONNECTED){Serial.println("SIN CONEXION: retira el tag y vuelve a tocar cuando haya red");return;}
-  String purpose=paymentArmed?"payment":"balance";
-  if(!savePending(uuid(),current,purpose))return;
-  paymentArmed=false;
-  Serial.println(purpose=="balance"?"Consultando fondos OGPASS. No se realizara un cobro.":"Solicitando operacion. Confirma en tu movil.");
+
+void loop() {
+    static uint32_t lastProbe=0;
+    if(millis()-lastProbe>=2000) {lastProbe=millis();primary.probe();}
+    while(Serial.available()) {
+        const char c=Serial.read();
+        if(c=='\n' || c=='\r') {
+            command.trim();command.toUpperCase();
+            if(command=="STATUS") status();
+            else if(command=="I2CSCAN" && optionalTaskHandle) {
+                xTaskNotifyGive(optionalTaskHandle);
+                Serial.println("OGPASS_I2C_SCAN_QUEUED consultar STATUS; ACK no certifica lectura PN532");
+            } else if(command=="SALDO") Serial.println("CONSULTA SIN COBRO");
+            else if(command=="PAGAR") Serial.println("PAGOS DESHABILITADOS en este firmware de lanzamiento");
+            command="";
+        } else if(command.length()<20) command+=c;
+    }
+    Detection detection;
+    // Only consume an already available optional result; never call optional I/O.
+    const bool detected=readers.pollPrimary(detection) ||
+        (optionalEvents && xQueueReceive(optionalEvents,&detection,0)==pdTRUE);
+    if(detected) {
+        QueuedDetection event;event.value=detection;eventId(event.eventId);
+        JsonDocument value;value["event_id"]=event.eventId;value["state"]="detected";
+        value["reader"]=detection.reader;value["technology"]=detection.technology;
+#if OGPASS_DEVELOPER_MODE
+        value["uid"]=detection.uid;value["protocol"]=detection.protocol;
+        value["sak"]=detection.sak;value["atqa"]=detection.atqa;
+        value["type"]=detection.type;value["latency_ms"]=detection.latencyMs;
+#endif
+        Serial.print("OGPASS_NFC_EVENT ");serializeJson(value,Serial);Serial.println();
+        if(transport.configured() && !transport.enqueue(event)) Serial.println("OGPASS_QUEUE_FULL event_not_sent");
+    }
+    delay(5);
 }

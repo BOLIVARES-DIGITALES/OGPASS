@@ -1,0 +1,35 @@
+OGPASS — LABORATORIO DE PROTOTIPOS
+Fecha: 2026-10-11
+Estado: ITERATE. Ninguna ficha implica soporte comercial ni prueba física realizada.
+
+Objetivo
+Investigar localización colaborativa exclusivamente de hardware OGPASS propio.
+
+Hardware
+Dispositivos de laboratorio con propietarios informados; no desplegar seguimiento de personas.
+
+Protocolo
+OpenHaystack / BLE, rotación de identificadores, reporte cifrado y consulta de ubicación. No integrado al MVP.
+
+Mini driver
+No existe driver Find My en el producto. Cualquier ensayo debe vivir en entorno y credenciales separados.
+
+Capacidades
+Investigación; no se declara localización funcional ni compatibilidad oficial con Find My.
+
+Arquitectura
+Aislado de wallet, ledger, pagos, autorización e identidad crítica. Ninguna dependencia nueva en el MVP.
+
+Pruebas
+Compatibilidad de versiones, privacidad/consentimiento, rotación, aviso a terceros, desactivación, consumo y borrado de datos.
+
+Resultados
+Lectura de referencia primaria: https://github.com/seemoo-lab/openhaystack . Sin instalación ni emisión RF.
+
+Riesgos
+El proyecto se presenta como experimental; describe identificadores fijos rastreables en su firmware. No asumir viabilidad pública ni respaldo de Apple.
+
+Criterio de promoción
+ITERATE; para PROMOTE exigir revisión de privacidad, mantenimiento, estabilidad y viabilidad contractual. REJECT si exige debilitar seguridad del usuario.
+
+Decisión actual: ITERATE

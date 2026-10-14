@@ -1,0 +1,35 @@
+OGPASS — LABORATORIO DE PROTOTIPOS
+Fecha: 2026-10-11
+Estado: ITERATE. Ninguna ficha implica soporte comercial ni prueba física realizada.
+
+Objetivo
+Combinar BLE para contexto y toque NFC para acción explícita.
+
+Hardware
+ESP32 + RC522 + PN532 opcional; BLE integrado; QR/UWB/LF son líneas futuras.
+
+Protocolo
+Namespaces separados; NFC ISO14443A activo, BLE iBeacon laboratorio. WiFi transporta eventos HTTPS.
+
+Mini driver
+Registrar drivers y capacidades en ReaderManager; nuevas radios deben mantener interfaz y pruebas de contrato.
+
+Capacidades
+No declarar detección universal: únicamente tecnologías observables por hardware instalado y driver implementado.
+
+Arquitectura
+Colas acotadas, eventos con UUID, persistencia NVS de evento en vuelo; backend deduplica y emite SSE al commit.
+
+Pruebas
+PN532 desconectado, BLE fallido, backend caído, cola llena, reset, múltiples nodos, eventos duplicados y misma UID en namespaces distintos.
+
+Resultados
+Aislamiento/fallback lógico verificado por tests nativos; coexistencia eléctrica/RF pendiente.
+
+Riesgos
+Compartir fuente puede propagar fallos físicos; cola RAM pierde eventos al reiniciar. No aprobar operaciones offline.
+
+Criterio de promoción
+Latencia y consumo medidos, fallback demostrado físicamente y UI honesta ante desconexión o tecnología desconocida.
+
+Decisión actual: ITERATE

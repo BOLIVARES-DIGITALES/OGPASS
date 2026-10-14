@@ -11,6 +11,7 @@ from django.db import transaction, IntegrityError
 from django.http import JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.utils import timezone
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
 from django.views.decorators.http import require_POST, require_GET
 from .models import Wallet, Reader, Tag, Operation, TopUp, Audit, StellarAccount, CardScan, Preload, CardAssociationRequest, ExternalTransitCredential
@@ -103,6 +104,9 @@ def op_data(op):
     return {'id':str(op.pk),'status':status,'amount':op.amount,'cost':op.cost,'margin':op.margin,'reason':op.reason,'created_at':op.created_at.isoformat(),'expires_at':op.expires_at.isoformat(),'reader':op.reader.name}
 
 def register(request):
+    next_url = request.POST.get('next') or request.GET.get('next') or '/'
+    if not next_url.startswith('/') or not url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()):
+        next_url = '/'
     form = UserCreationForm(request.POST or None)
     if request.method == 'POST' and form.is_valid():
         with transaction.atomic():
@@ -110,15 +114,17 @@ def register(request):
             Wallet.objects.create(user=user)
             Audit.objects.create(actor=str(user.pk),event='account_created',reference=str(user.pk))
         login(request,user)
-        return redirect('/')
-    return render(request,'registration/register.html',{'form':form})
+        return redirect(next_url)
+    return render(request,'registration/register.html',{'form':form, 'next':next_url})
 
 @login_required
 def home(request):
     wallet = wallet_for(request.user)
     try: card_number = card_number_normalize(request.GET.get('card_number',''))
     except ValueError: card_number = ''
-    return render(request,'home.html',{'card_number':card_number,'wallet':wallet,'balance':balance(wallet),'association_request':CardAssociationRequest.objects.filter(wallet=wallet,status='pending').first(),'tags':Tag.objects.filter(wallet=wallet),'payments_enabled':settings.PAYMENTS_ENABLED,'topup_key':uuid.uuid4()})
+    from backend.apps.identity.services import identity_for, identity_data
+    profile = identity_data(identity_for(request.user))
+    return render(request,'home.html',{'profile':profile,'card_number':card_number,'wallet':wallet,'balance':balance(wallet),'association_request':CardAssociationRequest.objects.filter(wallet=wallet,status='pending').first(),'tags':Tag.objects.filter(wallet=wallet),'payments_enabled':settings.PAYMENTS_ENABLED,'topup_key':uuid.uuid4()})
 
 @login_required
 @require_GET

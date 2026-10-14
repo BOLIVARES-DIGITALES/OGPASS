@@ -1,0 +1,15 @@
+{
+  "status": "PASS",
+  "widths": [
+    375,
+    390,
+    430,
+    768,
+    1440
+  ],
+  "separate_browser_contexts": true,
+  "js_errors": [],
+  "funds": "none",
+  "hardware": "not exercised; URLs only",
+  "screenshots": "test users only"
+}

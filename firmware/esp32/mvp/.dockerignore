@@ -7,3 +7,13 @@ __pycache__
 secrets
 staticfiles
 evidence
+**/__pycache__
+**/*.pyc
+**/*.sqlite3
+**/node_modules
+**/dist
+**/*.key
+**/*.pem
+**/.env
+hardware
+prototipos

@@ -1,0 +1,35 @@
+OGPASS — LABORATORIO DE PROTOTIPOS
+Fecha: 2026-10-11
+Estado: ITERATE. Ninguna ficha implica soporte comercial ni prueba física realizada.
+
+Objetivo
+Evaluar credencial propia virtual OGPASS: URL NDEF, vCard o referencia firmada.
+
+Hardware
+PN532 y lector receptor de laboratorio autorizado; registrar revisión, alimentación y modo del módulo.
+
+Protocolo
+Investigar modo target y negociación soportada por la biblioteca elegida; no asumir soporte por un ACK I2C.
+
+Mini driver
+Crear adaptador experimental de emulate(); el actual Pn532Diagnostic devuelve UNSUPPORTED.
+
+Capacidades
+Objetivo futuro EMULATE/NDEF/APDU; actualmente solo HEALTH. No clonar credenciales ajenas.
+
+Arquitectura
+Tarea opcional aislada, sin claves privadas en payload; normalizador superior independiente de NFC.
+
+Pruebas
+Lectores autorizados Android/iOS/USB, timeout, retirada, desconexión I2C, aceptación y expiración de payload.
+
+Resultados
+No se implementó ni ejecutó emulación RF. Estado ITERATE.
+
+Riesgos
+Limitaciones de target, interoperabilidad incompleta y replay de referencias públicas. Emular no equivale a autorizar.
+
+Criterio de promoción
+Payload propio especificado, hardware destino confirmado y resultados repetibles antes de exponer una acción al usuario.
+
+Decisión actual: ITERATE

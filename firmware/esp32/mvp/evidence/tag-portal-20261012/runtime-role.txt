@@ -1,0 +1,5 @@
+Operations to perform:
+  Apply all migrations: admin, auth, contenttypes, core, sessions
+Running migrations:
+  Applying core.0011_tag_portal... OK
+{"runtime_role": "ogpass", "provision_activate_block": "PASS", "financial_changes": false, "fixture_rolled_back": true}

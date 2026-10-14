@@ -4,7 +4,8 @@ from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
 from unittest.mock import patch
 import requests
-from django.test import LiveServerTestCase,override_settings
+from django.test import override_settings
+from django.contrib.staticfiles.testing import StaticLiveServerTestCase
 from django.db import connection,connections
 from django.contrib.auth import get_user_model
 from playwright.sync_api import sync_playwright
@@ -12,20 +13,23 @@ from core.models import Wallet,Reader,TopUp
 from core.services import balance,reconciliation
 
 @override_settings(PAYMENTS_ENABLED=True,MP_COLLECTOR_ID='123',MP_WEBHOOK_SECRET='browser-test-secret',ALLOWED_HOSTS=['localhost','127.0.0.1','testserver'])
-class BrowserFlow(LiveServerTestCase):
+class BrowserFlow(StaticLiveServerTestCase):
     @patch('core.adapters.Transport.portal_status',new=lambda self: {'status':'verification_required','checked_at':'2026-09-25T16:00:00+00:00'})
     def test_mobile_checkout_touch_confirm_admin(self):
         if connection.vendor!='postgresql':self.skipTest('Browser test uses PostgreSQL to avoid shared in-memory SQLite connections')
         user=get_user_model().objects.create_user('demo',password='test-only-password-892',is_staff=True)
         wallet=Wallet.objects.create(user=user)
         Reader.objects.create(name='ESP32-001',token_hash=hashlib.sha256(b'browser-reader-token').hexdigest(),amount=1000,cost=700)
-        evidence=Path(__file__).resolve().parents[1]/'evidence'
+        evidence=Path(os.getenv('OGPASS_EVIDENCE_DIR',str(Path(__file__).resolve().parents[1]/'evidence')))
+        evidence.mkdir(parents=True,exist_ok=True)
         with sync_playwright() as p:
             browser=p.chromium.launch(headless=True,args=['--no-sandbox'])
             page=browser.new_page(viewport={'width':390,'height':844},device_scale_factor=1)
-            errors=[];http_errors=[];page.on('pageerror',lambda error:errors.append(str(error)))
+            errors=[];http_errors=[];page.on('pageerror',lambda error:errors.append(error.stack or str(error)))
             page.on('response',lambda response:http_errors.append(response.url) if response.status>=500 else None)
             page.goto(self.live_server_url+'/login/')
+            for asset in ('app.js','css/launch.css','components/launch.js'):
+                self.assertEqual(requests.get(self.live_server_url+'/static/'+asset,timeout=10).status_code,200)
             page.locator('[name=username]').fill('demo');page.locator('[name=password]').fill('test-only-password-892')
             page.get_by_role('button',name='Ingresar',exact=True).click()
             headers={'Authorization':'Bearer browser-reader-token'}

@@ -1,0 +1,35 @@
+OGPASS — LABORATORIO DE PROTOTIPOS
+Fecha: 2026-10-11
+Estado: ITERATE. Ninguna ficha implica soporte comercial ni prueba física realizada.
+
+Objetivo
+Descubrimiento local de nodos propios y preparación de contexto por proximidad.
+
+Hardware
+ESP32 emisor y receptor BLE autorizado; calibración con distancia, obstáculos y alimentación registrados.
+
+Protocolo
+iBeacon: UUID de organización, Major de zona, Minor de dispositivo, Measured Power calibrado. Datos fabricante de 25 bytes.
+
+Mini driver
+BleBeacon y BeaconPayload en hardware/drivers/ble. Compilar pio run -e ble_ibeacon; no activado en esp32dev.
+
+Capacidades
+BEACON y HEALTH del stack. PROXIMITY requiere receptor/calibración adicional; no es autenticación.
+
+Arquitectura
+UUID de laboratorio fijo sin identidad personal. BLE en tarea opcional; nunca requisito del wallet o RC522.
+
+Pruebas
+Validar bytes, recepción externa, UUID/Major/Minor, consumo, coexistencia WiFi/NFC, pérdida de radio y firmware sin BLE.
+
+Resultados
+Prueba nativa de codificación disponible. Emisión física, RSSI y consumo pendientes de banco.
+
+Riesgos
+Identificadores estáticos rastreables; RSSI no demuestra distancia exacta ni identidad. No anunciar PUBLIC_ID personal.
+
+Criterio de promoción
+Repetibilidad RF, consentimiento, minimización, presupuesto energético y funcionamiento NFC con BLE apagado.
+
+Decisión actual: ITERATE

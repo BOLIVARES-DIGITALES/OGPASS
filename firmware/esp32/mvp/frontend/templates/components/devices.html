@@ -1,0 +1,5 @@
+<section class="card" id="platform-devices-section" data-developer="{{ developer_mode|yesno:'true,false' }}" data-staff="{{ user.is_staff|yesno:'true,false' }}">
+  <p class="eyebrow">TU RED OGPASS</p><h2>Mis dispositivos</h2>
+  <div id="platform-devices" class="device-grid" aria-live="polite">Consultando dispositivos…</div>
+  {% if developer_mode %}<p class="developer-badge">Developer Mode · Diagnóstico autorizado</p>{% endif %}
+</section>

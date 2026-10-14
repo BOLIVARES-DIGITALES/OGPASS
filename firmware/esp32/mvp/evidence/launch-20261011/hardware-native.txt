@@ -1,0 +1,1 @@
+PASS: primary isolation (1000 polls), failed optional, fallback, unsupported writes, iBeacon bytes

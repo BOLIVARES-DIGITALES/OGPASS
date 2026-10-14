@@ -1,0 +1,1 @@
+{"status": "PASS", "widths": [375, 390, 430, 768, 1440], "hardware_event_visible_ms": 849, "js_errors": [], "hardware": "simulated HTTP", "funds": "none", "database": "temporary SQLite", "production_verified": false}

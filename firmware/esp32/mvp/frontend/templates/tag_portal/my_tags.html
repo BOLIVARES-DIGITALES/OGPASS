@@ -1,0 +1,22 @@
+{% extends 'base.html' %}{% block content %}
+<section class="identity-card"><p class="eyebrow">OGPASS TAG</p><h1>Mis llaveros</h1>
+<p>Un enlace NFC o QR abre tu portal. Solo tu sesión permite acceder a tu cuenta.</p></section>
+<div class="device-grid">{% for row in tag_rows %}<article class="card">
+<h2>{{ row.label }}</h2><p>{% if row.active %}Tarjeta asociada{% else %}Llavero bloqueado{% endif %}</p>
+{% if row.payload %}
+  <p><a href="{{ row.payload.uri }}">Abrir portal del llavero</a></p>
+  <label for="tag-link-{{ row.tag_id }}">Enlace para NFC / QR</label>
+  <input id="tag-link-{{ row.tag_id }}" type="url" value="{{ row.payload.uri }}" readonly>
+  <small>{{ row.payload.ntag213_bytes }} bytes estimados en NDEF. {% if row.payload.fits_ntag213 %}Cabe en NTAG213.{% else %}Supera la capacidad de NTAG213; acorta el dominio antes de provisionar.{% endif %}</small>
+  <p>Este enlace es público; no contiene saldo ni credenciales de sesión. No se ha escrito ningún tag.</p>
+  <details><summary>Bloquear por pérdida</summary>
+    <p>Desactiva este llavero y su acceso web. Tu saldo permanece en tu cuenta.</p>
+    <form action="{% url 'block-tag-portal' row.portal.code %}" method="post">{% csrf_token %}
+      <label class="checkbox-label"><input type="checkbox" name="confirm" value="block" required> Confirmar bloqueo</label><button>Bloquear llavero</button>
+    </form>
+  </details>
+{% elif not row.portal and row.active %}
+  <form action="{% url 'provision-tag-portal' row.tag_id %}" method="post">{% csrf_token %}<button>Crear enlace de mi llavero</button></form>
+{% elif row.portal %}<p>El acceso web no está disponible. Consulta con soporte autorizado.</p>{% endif %}
+</article>{% empty %}<section class="card"><h2>Asocia tu primer llavero</h2><p>Primero vincula la tarjeta mediante una lectura física autorizada. Un enlace no permite reclamar tarjetas ajenas.</p><a class="button" href="/#my-card">Asociar tarjeta</a></section>{% endfor %}</div>
+{% endblock %}

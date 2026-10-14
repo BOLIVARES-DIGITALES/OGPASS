@@ -1,0 +1,169 @@
+Processing ble_ibeacon (platform: espressif32@6.12.0; board: esp32dev; framework: arduino)
+--------------------------------------------------------------------------------
+Library Manager: Installing miguelbalboa/MFRC522 @ 1.4.12
+Unpacking 0% 10% 20% 30% 40% 50% 60% 70% 80% 90% 100%
+Library Manager: MFRC522@1.4.12 has been installed!
+Library Manager: Installing bblanchon/ArduinoJson @ 7.4.2
+Unpacking 0% 10% 20% 30% 40% 50% 60% 70% 80% 90% 100%
+Library Manager: ArduinoJson@7.4.2 has been installed!
+Verbose mode can be enabled via `-v, --verbose` option
+CONFIGURATION: https://docs.platformio.org/page/boards/espressif32/esp32dev.html
+PLATFORM: Espressif 32 (6.12.0) > Espressif ESP32 Dev Module
+HARDWARE: ESP32 240MHz, 320KB RAM, 4MB Flash
+DEBUG: Current (cmsis-dap) External (cmsis-dap, esp-bridge, esp-prog, iot-bus-jtag, jlink, minimodule, olimex-arm-usb-ocd, olimex-arm-usb-ocd-h, olimex-arm-usb-tiny-h, olimex-jtag-tiny, tumpa)
+PACKAGES: 
+ - framework-arduinoespressif32 @ 3.20017.241212+sha.dcc1105b 
+ - tool-esptoolpy @ 2.40900.250804 (4.9.0) 
+ - toolchain-xtensa-esp32 @ 8.4.0+2021r2-patch5
+LDF: Library Dependency Finder -> https://bit.ly/configure-pio-ldf
+LDF Modes: Finder ~ chain, Compatibility ~ soft
+Found 35 compatible libraries
+Scanning dependencies...
+Dependency Graph
+|-- MFRC522 @ 1.4.12
+|-- ArduinoJson @ 7.4.2
+|-- ESP32 BLE Arduino @ 2.0.0
+|-- HTTPClient @ 2.0.0
+|-- Preferences @ 2.0.0
+|-- SPI @ 2.0.0
+|-- WiFi @ 2.0.0
+|-- WiFiClientSecure @ 2.0.0
+|-- Wire @ 2.0.0
+Building in release mode
+Compiling .pio/build/ble_ibeacon/src/main.cpp.o
+Building .pio/build/ble_ibeacon/bootloader.bin
+Generating partitions .pio/build/ble_ibeacon/partitions.bin
+esptool.py v4.9.0
+Creating esp32 image...
+Merged 1 ELF section
+Successfully created esp32 image.
+Compiling .pio/build/ble_ibeacon/libac6/SPI/SPI.cpp.o
+Compiling .pio/build/ble_ibeacon/libda0/MFRC522/MFRC522.cpp.o
+Compiling .pio/build/ble_ibeacon/libda0/MFRC522/MFRC522Extended.cpp.o
+Compiling .pio/build/ble_ibeacon/lib448/BLE/BLE2902.cpp.o
+Compiling .pio/build/ble_ibeacon/lib448/BLE/BLE2904.cpp.o
+Compiling .pio/build/ble_ibeacon/lib448/BLE/BLEAddress.cpp.o
+Compiling .pio/build/ble_ibeacon/lib448/BLE/BLEAdvertisedDevice.cpp.o
+Archiving .pio/build/ble_ibeacon/libac6/libSPI.a
+Indexing .pio/build/ble_ibeacon/libac6/libSPI.a
+Compiling .pio/build/ble_ibeacon/lib448/BLE/BLEAdvertising.cpp.o
+Compiling .pio/build/ble_ibeacon/lib448/BLE/BLEBeacon.cpp.o
+Compiling .pio/build/ble_ibeacon/lib448/BLE/BLECharacteristic.cpp.o
+Compiling .pio/build/ble_ibeacon/lib448/BLE/BLECharacteristicMap.cpp.o
+Compiling .pio/build/ble_ibeacon/lib448/BLE/BLEClient.cpp.o
+Archiving .pio/build/ble_ibeacon/libda0/libMFRC522.a
+Indexing .pio/build/ble_ibeacon/libda0/libMFRC522.a
+Compiling .pio/build/ble_ibeacon/lib448/BLE/BLEDescriptor.cpp.o
+Compiling .pio/build/ble_ibeacon/lib448/BLE/BLEDescriptorMap.cpp.o
+Compiling .pio/build/ble_ibeacon/lib448/BLE/BLEDevice.cpp.o
+Compiling .pio/build/ble_ibeacon/lib448/BLE/BLEEddystoneTLM.cpp.o
+Compiling .pio/build/ble_ibeacon/lib448/BLE/BLEEddystoneURL.cpp.o
+Compiling .pio/build/ble_ibeacon/lib448/BLE/BLEExceptions.cpp.o
+Compiling .pio/build/ble_ibeacon/lib448/BLE/BLEHIDDevice.cpp.o
+Compiling .pio/build/ble_ibeacon/lib448/BLE/BLERemoteCharacteristic.cpp.o
+Compiling .pio/build/ble_ibeacon/lib448/BLE/BLERemoteDescriptor.cpp.o
+Compiling .pio/build/ble_ibeacon/lib448/BLE/BLERemoteService.cpp.o
+Compiling .pio/build/ble_ibeacon/lib448/BLE/BLEScan.cpp.o
+Compiling .pio/build/ble_ibeacon/lib448/BLE/BLESecurity.cpp.o
+Compiling .pio/build/ble_ibeacon/lib448/BLE/BLEServer.cpp.o
+Compiling .pio/build/ble_ibeacon/lib448/BLE/BLEService.cpp.o
+Compiling .pio/build/ble_ibeacon/lib448/BLE/BLEServiceMap.cpp.o
+Compiling .pio/build/ble_ibeacon/lib448/BLE/BLEUUID.cpp.o
+Compiling .pio/build/ble_ibeacon/lib448/BLE/BLEUtils.cpp.o
+Compiling .pio/build/ble_ibeacon/lib448/BLE/BLEValue.cpp.o
+Compiling .pio/build/ble_ibeacon/lib448/BLE/FreeRTOS.cpp.o
+Compiling .pio/build/ble_ibeacon/lib448/BLE/GeneralUtils.cpp.o
+Compiling .pio/build/ble_ibeacon/lib920/WiFi/WiFi.cpp.o
+Compiling .pio/build/ble_ibeacon/lib920/WiFi/WiFiAP.cpp.o
+Compiling .pio/build/ble_ibeacon/lib920/WiFi/WiFiClient.cpp.o
+Compiling .pio/build/ble_ibeacon/lib920/WiFi/WiFiGeneric.cpp.o
+Compiling .pio/build/ble_ibeacon/lib920/WiFi/WiFiMulti.cpp.o
+Compiling .pio/build/ble_ibeacon/lib920/WiFi/WiFiSTA.cpp.o
+Compiling .pio/build/ble_ibeacon/lib920/WiFi/WiFiScan.cpp.o
+Compiling .pio/build/ble_ibeacon/lib920/WiFi/WiFiServer.cpp.o
+Compiling .pio/build/ble_ibeacon/lib920/WiFi/WiFiUdp.cpp.o
+Archiving .pio/build/ble_ibeacon/lib448/libBLE.a
+Indexing .pio/build/ble_ibeacon/lib448/libBLE.a
+Compiling .pio/build/ble_ibeacon/lib5a4/WiFiClientSecure/WiFiClientSecure.cpp.o
+Compiling .pio/build/ble_ibeacon/lib5a4/WiFiClientSecure/esp_crt_bundle.c.o
+Compiling .pio/build/ble_ibeacon/lib5a4/WiFiClientSecure/ssl_client.cpp.o
+Compiling .pio/build/ble_ibeacon/liba11/HTTPClient/HTTPClient.cpp.o
+Compiling .pio/build/ble_ibeacon/libc2d/Preferences/Preferences.cpp.o
+Archiving .pio/build/ble_ibeacon/lib920/libWiFi.a
+Indexing .pio/build/ble_ibeacon/lib920/libWiFi.a
+Compiling .pio/build/ble_ibeacon/lib8e0/Wire/Wire.cpp.o
+Compiling .pio/build/ble_ibeacon/FrameworkArduino/Esp.cpp.o
+Compiling .pio/build/ble_ibeacon/FrameworkArduino/FirmwareMSC.cpp.o
+Compiling .pio/build/ble_ibeacon/FrameworkArduino/FunctionalInterrupt.cpp.o
+Compiling .pio/build/ble_ibeacon/FrameworkArduino/HWCDC.cpp.o
+Archiving .pio/build/ble_ibeacon/lib5a4/libWiFiClientSecure.a
+Indexing .pio/build/ble_ibeacon/lib5a4/libWiFiClientSecure.a
+Compiling .pio/build/ble_ibeacon/FrameworkArduino/HardwareSerial.cpp.o
+Compiling .pio/build/ble_ibeacon/FrameworkArduino/IPAddress.cpp.o
+Compiling .pio/build/ble_ibeacon/FrameworkArduino/IPv6Address.cpp.o
+Archiving .pio/build/ble_ibeacon/libc2d/libPreferences.a
+Indexing .pio/build/ble_ibeacon/libc2d/libPreferences.a
+Compiling .pio/build/ble_ibeacon/FrameworkArduino/MD5Builder.cpp.o
+Archiving .pio/build/ble_ibeacon/lib8e0/libWire.a
+Indexing .pio/build/ble_ibeacon/lib8e0/libWire.a
+Compiling .pio/build/ble_ibeacon/FrameworkArduino/Print.cpp.o
+Compiling .pio/build/ble_ibeacon/FrameworkArduino/Stream.cpp.o
+Compiling .pio/build/ble_ibeacon/FrameworkArduino/StreamString.cpp.o
+Compiling .pio/build/ble_ibeacon/FrameworkArduino/Tone.cpp.o
+Compiling .pio/build/ble_ibeacon/FrameworkArduino/USB.cpp.o
+Compiling .pio/build/ble_ibeacon/FrameworkArduino/USBCDC.cpp.o
+Compiling .pio/build/ble_ibeacon/FrameworkArduino/USBMSC.cpp.o
+Compiling .pio/build/ble_ibeacon/FrameworkArduino/WMath.cpp.o
+Archiving .pio/build/ble_ibeacon/liba11/libHTTPClient.a
+Indexing .pio/build/ble_ibeacon/liba11/libHTTPClient.a
+Compiling .pio/build/ble_ibeacon/FrameworkArduino/WString.cpp.o
+Compiling .pio/build/ble_ibeacon/FrameworkArduino/base64.cpp.o
+Compiling .pio/build/ble_ibeacon/FrameworkArduino/cbuf.cpp.o
+Compiling .pio/build/ble_ibeacon/FrameworkArduino/esp32-hal-adc.c.o
+Compiling .pio/build/ble_ibeacon/FrameworkArduino/esp32-hal-bt.c.o
+Compiling .pio/build/ble_ibeacon/FrameworkArduino/esp32-hal-cpu.c.o
+Compiling .pio/build/ble_ibeacon/FrameworkArduino/esp32-hal-dac.c.o
+Compiling .pio/build/ble_ibeacon/FrameworkArduino/esp32-hal-gpio.c.o
+Compiling .pio/build/ble_ibeacon/FrameworkArduino/esp32-hal-i2c-slave.c.o
+Compiling .pio/build/ble_ibeacon/FrameworkArduino/esp32-hal-i2c.c.o
+Compiling .pio/build/ble_ibeacon/FrameworkArduino/esp32-hal-ledc.c.o
+Compiling .pio/build/ble_ibeacon/FrameworkArduino/esp32-hal-matrix.c.o
+Compiling .pio/build/ble_ibeacon/FrameworkArduino/esp32-hal-misc.c.o
+Compiling .pio/build/ble_ibeacon/FrameworkArduino/esp32-hal-psram.c.o
+Compiling .pio/build/ble_ibeacon/FrameworkArduino/esp32-hal-rgb-led.c.o
+Compiling .pio/build/ble_ibeacon/FrameworkArduino/esp32-hal-rmt.c.o
+Compiling .pio/build/ble_ibeacon/FrameworkArduino/esp32-hal-sigmadelta.c.o
+Compiling .pio/build/ble_ibeacon/FrameworkArduino/esp32-hal-spi.c.o
+Compiling .pio/build/ble_ibeacon/FrameworkArduino/esp32-hal-time.c.o
+Compiling .pio/build/ble_ibeacon/FrameworkArduino/esp32-hal-timer.c.o
+Compiling .pio/build/ble_ibeacon/FrameworkArduino/esp32-hal-tinyusb.c.o
+Compiling .pio/build/ble_ibeacon/FrameworkArduino/esp32-hal-touch.c.o
+Compiling .pio/build/ble_ibeacon/FrameworkArduino/esp32-hal-uart.c.o
+Compiling .pio/build/ble_ibeacon/FrameworkArduino/firmware_msc_fat.c.o
+Compiling .pio/build/ble_ibeacon/FrameworkArduino/libb64/cdecode.c.o
+Compiling .pio/build/ble_ibeacon/FrameworkArduino/libb64/cencode.c.o
+Compiling .pio/build/ble_ibeacon/FrameworkArduino/main.cpp.o
+Compiling .pio/build/ble_ibeacon/FrameworkArduino/stdlib_noniso.c.o
+Compiling .pio/build/ble_ibeacon/FrameworkArduino/wiring_pulse.c.o
+Compiling .pio/build/ble_ibeacon/FrameworkArduino/wiring_shift.c.o
+Archiving .pio/build/ble_ibeacon/libFrameworkArduino.a
+Indexing .pio/build/ble_ibeacon/libFrameworkArduino.a
+Linking .pio/build/ble_ibeacon/firmware.elf
+Retrieving maximum program size .pio/build/ble_ibeacon/firmware.elf
+Checking size .pio/build/ble_ibeacon/firmware.elf
+Advanced Memory Usage is available via "PlatformIO Home > Project Inspect"
+RAM:   [=         ]  12.1% (used 39716 bytes from 327680 bytes)
+Flash: [========= ]  88.3% (used 1157001 bytes from 1310720 bytes)
+Building .pio/build/ble_ibeacon/firmware.bin with action:
+  "$PYTHONEXE" "$OBJCOPY" --chip esp32 elf2image --flash_mode ${__get_board_flash_mode(__env__)} --flash_freq ${__get_board_f_image(__env__)} --flash_size 4MB --elf-sha256-offset 0xb0 -o $TARGET $SOURCES
+Building .pio/build/ble_ibeacon/firmware.bin
+esptool.py v4.9.0
+Creating esp32 image...
+Merged 27 ELF sections
+Successfully created esp32 image.
+========================= [SUCCESS] Took 32.68 seconds =========================
+
+Environment    Status    Duration
+-------------  --------  ------------
+ble_ibeacon    SUCCESS   00:00:32.682
+========================= 1 succeeded in 00:00:32.682 =========================

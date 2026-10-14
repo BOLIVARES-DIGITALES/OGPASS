@@ -3,6 +3,13 @@ from django.conf import settings
 from django.db import models
 from django.db.models import Q
 
+# New domain models retain the core app label so the existing migration graph,
+# table ownership and ledger installation stay intact during this transition.
+from backend.apps.identity.models import OgpassIdentity
+from backend.apps.credentials.models import NormalizedCredential
+from backend.apps.devices.models import OgpassDevice, HardwareEvent
+from backend.apps.tag_portal.models import TagPortal
+
 class Wallet(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
     frozen = models.BooleanField(default=False)

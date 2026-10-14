@@ -14,8 +14,9 @@ local_backend() {
   # All management commands here use the same isolated development database.
   unset POSTGRES_HOST
   export DEBUG=1
+  export OGPASS_ENV=development
   export SQLITE_PATH="$backend_dir/db.nfc-dev.sqlite3"
-  export PUBLIC_URL=http://localhost:3000
+  export PUBLIC_URL=http://localhost:8000
   export ALLOWED_HOSTS=localhost,127.0.0.1
   export MP_ACCESS_TOKEN= MP_WEBHOOK_SECRET= MP_COLLECTOR_ID=
   export MOVIRED_BALANCE_API_URL= MOVIRED_BALANCE_API_TOKEN=
@@ -40,11 +41,9 @@ case "${1:-}" in
     exec .venv/bin/python -m uvicorn config.asgi:application --host 127.0.0.1 --port 8000 --reload
     ;;
   frontend)
-    cd -- "$project_dir/front_ogpass-sdk-hub"
-    command -v npm >/dev/null || fail 'Falta Node.js/npm en PATH. Instálalos antes de iniciar 02 OGPASS FRONTEND.'
-    [[ -d node_modules ]] || fail 'Faltan dependencias. Ejecuta npm install en front_ogpass-sdk-hub y vuelve a iniciar esta tarea.'
-    printf '%s\n' '02 OGPASS FRONTEND | http://localhost:3000/ | API por proxy al puerto 8000.'
-    exec npm run dev -- --host 127.0.0.1 --port 3000 --strictPort
+    printf '%s\n' '02 OGPASS FRONTEND | http://localhost:8000/ | Templates del MVP, mismo origen que la API.'
+    printf '%s\n' 'Inicia primero 01 OGPASS BACKEND. El frontend externo es un laboratorio independiente.'
+    exec python3 -m webbrowser -t http://localhost:8000/
     ;;
   validator)
     platformio

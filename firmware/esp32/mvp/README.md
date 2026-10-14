@@ -1,6 +1,26 @@
 # OGPASS MVP
 
-Django 5.2 + PostgreSQL + web móvil del mismo origen + ESP32/PN532. Código creado en `firmware/esp32/mvp` porque este es el workspace con permiso de escritura. `backend/` estaba vacío; el prototipo `sandbox/` se conserva y no se migra automáticamente: sus JSON no son evidencia de fondos reales.
+Django 5.2 + PostgreSQL + web móvil del mismo origen + ESP32/RC522 (principal) y PN532 opcional. Código creado en `firmware/esp32/mvp` porque este es el workspace con permiso de escritura. `backend/` estaba vacío; el prototipo `sandbox/` se conserva y no se migra automáticamente: sus JSON no son evidencia de fondos reales.
+
+
+## Base de lanzamiento vigente — 11/10/2026
+
+Este directorio es el único MVP de lanzamiento. Frontend en `frontend/`, configuración
+real en `backend/config/`, dominios nuevos en `backend/apps/`, hardware en `hardware/`
+y laboratorio exclusivamente textual en `prototipos/`. Los imports `config.*`,
+`core.*`, las APIs previas y las migraciones contables se mantienen compatibles.
+
+Ver [arquitectura y mapa de dependencias](docs/ARCHITECTURE.md),
+[API v1](docs/API_V1.md), [pruebas y lanzamiento](docs/TESTING_RELEASE.md) y
+[entrega de este sprint](evidence/launch-20261011/SPRINT.md).
+Los apartados históricos de 25/09 describen el firmware PN532 anterior. El firmware
+actual usa RC522, consultas sin cobro y eventos v1; `PAGAR` permanece deshabilitado.
+No hay nuevas tecnologías promovidas a hardware comercial por esta reorganización.
+
+Portal NFC/QR integrado: [guía y alcance](docs/TAG_PORTAL.md). Desde la cuenta,
+«Mis llaveros NFC / QR» abre `/my/tags/`; permite crear enlaces para tarjetas ya
+asociadas, activar el acceso y bloquear un llavero perdido. La URL `/w/<code>/`
+presenta vistas distintas a visitante y titular autenticado, sin autorizar pagos.
 
 ## Estado de entrega
 
@@ -12,7 +32,7 @@ Consultar [evidence/DELIVERY.md](evidence/DELIVERY.md) para verificaciones y blo
 2. En «Mi tarjeta» introduce el ID de nueve dígitos y pulsa Asociar tarjeta. En `/ops/`, el administrador selecciona la solicitud y confirma su vinculación con una lectura reciente del lector. El número impreso no se convierte a UID ni vincula por sí solo una tarjeta física.
 3. Crea recarga de $500–$200.000 CLP y paga en checkout alojado de Mercado Pago Chile. También puede pagarla OGPASS con sus fondos reales para ese usuario.
 4. Backend valida firma de webhook y consulta `GET /v1/payments/{id}`. Solo acredita pagos aprobados **live**, en CLP, del collector configurado y por el importe/referencia exactos. La URL de retorno del checkout no acredita.
-5. Al acercar el tag al PN532, el modo normal consulta el saldo OGPASS sin crear un pago. Para pagar, el operador envía `PAGAR` por el monitor serie y acerca el tag en los siguientes 30 segundos. Precio y costo provienen del backend; el firmware no puede elegirlos.
+5. Al acercar el tag al lector, el modo normal consulta el saldo OGPASS sin crear un pago. El backend conserva el flujo explícito de pago con confirmación móvil; el firmware RC522 de lanzamiento mantiene pagos deshabilitados. Precio y costo provienen del backend; el firmware no puede elegirlos.
 6. Móvil muestra una solicitud válida durante 90 segundos. Usuario confirma; backend bloquea su wallet, verifica saldo y registra el débito y sus contrapartidas atómicamente.
 7. Lector consulta el resultado. Un HTTP 200 con `pending` **no** es aprobación. NVS conserva referencia y UID para recuperar un timeout o reinicio.
 8. Administrador consulta `/ops/`, concilia pagos por ID y reversa únicamente servicios no prestados, con motivo. Los movimientos originales no se borran.
@@ -48,7 +68,7 @@ agrupadas en paneles divididos. También puede iniciarse cada tarea por separado
 | Tarea / terminal | Qué muestra o ejecuta |
 |---|---|
 | 01 OGPASS BACKEND | Django/Uvicorn en puerto 8000, solicitudes y errores. |
-| 02 OGPASS FRONTEND | Interfaz cliente en puerto 3000 y mensajes de Vite. |
+| 02 OGPASS FRONTEND | Abre la web del MVP en puerto 8000, servida por Django. |
 | 03 OGPASS VALIDATOR | Lecturas NFC y respuestas serie a `STATUS`, `I2CSCAN` y `SALDO`. |
 | 04 OGPASS FLASH | Compilación y carga del firmware; ejecución independiente. |
 | 05 OGPASS ESTADO | Respuesta de `/health/` cada dos segundos; no certifica hardware. |
@@ -56,10 +76,8 @@ agrupadas en paneles divididos. También puede iniciarse cada tarea por separado
 | 07 OGPASS ADMIN | Alta interactiva de administrador local. |
 
 El lanzador `../scripts/dev-terminals.sh` usa `mvp/.venv/bin/python` y
-PlatformIO de `OGPASS/.venv/bin/pio`, con alternativa `pio` en PATH. Para el
-frontend requiere Node/npm en PATH y dependencias instaladas con `npm install`
-desde `OGPASS/front_ogpass-sdk-hub`. Si faltan requisitos, la terminal indica
-el bloqueo y conserva el mensaje; estas tareas no instalan dependencias.
+PlatformIO de `OGPASS/.venv/bin/pio`, con alternativa `pio` en PATH. El frontend de lanzamiento no requiere Node/npm: Django sirve templates y static.
+El proyecto externo `front_ogpass-sdk-hub` queda como laboratorio independiente.
 
 BACKEND aplica migraciones en `mvp/db.nfc-dev.sqlite3`, separada de la base
 habitual; ADMIN usa esa misma base. No cargan `.env`, ignoran `POSTGRES_HOST`
@@ -67,9 +85,9 @@ heredado y deshabilitan credenciales de pagos y Movired en esos procesos.
 No crean fondos, usuarios ni tokens de lector automáticamente. La primera
 ejecución crea una base sin cuentas: usar ADMIN para el administrador y
 `http://localhost:8000/register/` para el usuario. El frontend abre en
-`http://localhost:3000/`; la cuenta del MVP y `/ops/` están en
+`http://localhost:8000/`; la cuenta del MVP y `/ops/` están en
 `http://localhost:8000/`. Usar perfiles de navegador separados para titular y
-administrador. El backend confía en el origen `http://localhost:3000` para CSRF.
+administrador. El backend confía en el origen `http://localhost:8000` para CSRF.
 
 La lectura física necesita un endpoint HTTPS con CA válida que llegue al mismo
 backend, y un token provisionado en esa base; iniciar estas tareas no configura
@@ -180,7 +198,7 @@ PN532 en modo I2C: SDA GPIO21, SCL GPIO22, GND común, alimentación conforme al
 
 Para distinguir un fallo físico de un fallo de inicialización, el firmware escanea el bus al arrancar y admite el comando serie `I2CSCAN` a 115200 baudios. Un PN532 en modo I2C debe aparecer como `OGPASS_I2C_DEVICE 0x24`; si el resumen informa `devices=0`, ningún dispositivo está respondiendo en GPIO21/GPIO22 y la causa precede a la API y a la interfaz web.
 
-`platformio.ini` ejecuta `scripts/validate_config.py` antes de cada build o carga. Mientras exista un marcador `TU_...`, falte el token provisionado, la URL no sea HTTPS o la CA raíz siga pendiente, PlatformIO se detiene sin mostrar secretos ni modificar el dispositivo.
+Para habilitar red, ejecutar manualmente `scripts/validate_config.py` y completar la configuración privada. La compilación de diagnóstico permite configuración ausente; TLS no se desactiva ni se aceptan conexiones HTTP. `network_compile_test` es una compilación de cobertura con credenciales ficticias y CA inválida: nunca cargarla al dispositivo.
 
 La vista «Soy desarrollador» puede verificar el lector por Web Serial desde Chrome o Edge en HTTPS o localhost. El usuario debe seleccionar el puerto USB explícitamente. La web envía `STATUS` a 115200 baudios y sólo marca el equipo listo después de recibir una línea `OGPASS_STATUS` válida que confirme ESP32, PN532, Wi-Fi y heartbeat reciente con la API. Esta verificación no lee ni modifica una tarjeta.
 
